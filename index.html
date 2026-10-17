@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
+<meta name="x-build" content="2026-10-17 17:32 · 8e61c6d">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4292,6 +4293,33 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   function openRules() {
     el.rulesBody.innerHTML = rulesHtml();
     el.rulesModal.hidden = false;
+    const fb = document.querySelector('#btnForceReload');
+    if (fb) fb.addEventListener('click', forceReload);
+  }
+
+  /* 页面版本号：构建时写进 <meta name="x-build"> */
+  function buildStamp() {
+    const m = document.querySelector('meta[name="x-build"]');
+    return (m && m.content) || 'dev';
+  }
+
+  /* 强制更新：注销 Service Worker + 清空所有缓存 + 带时间戳重载
+     手机上「明明改了却还是旧界面」时用它，比教用户清缓存可靠 */
+  async function forceReload() {
+    toast('正在清除缓存…');
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (e) { /* 隐私模式/不支持则忽略 */ }
+    const u = new URL(location.href);
+    u.searchParams.set('t', String(Date.now()));
+    location.replace(u.toString());
   }
 
   /* 手机右侧抽屉（技能 / 战斗记录） */
@@ -4402,10 +4430,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     el.pickScreen.hidden = true;
   });
 
-  el.btnRules.addEventListener('click', () => {
-    el.rulesBody.innerHTML = rulesHtml();
-    el.rulesModal.hidden = false;
-  });
+  el.btnRules.addEventListener('click', openRules);
   el.btnCloseRules.addEventListener('click', () => {
     el.rulesModal.hidden = true;
   });
@@ -4460,6 +4485,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
          · 黄月英：用锦囊牌时自动摸牌；周瑜：摸牌阶段自动多摸一张。<br>
          · 夏侯惇：让他受伤，伤害来源会吃【刚烈】。<br>
          · 「观战」= 双方 AI 自动对打，适合观察技能联动。</p>
+
+      <h3>本页版本</h3>
+      <p><b>${buildStamp()}</b><br>
+         如果界面看起来是旧的（例如手机上出牌提示条位置错乱），点下面的按钮会注销离线缓存并重新加载：
+         <button id="btnForceReload" class="mini" style="margin-left:6px">强制更新</button></p>
     `;
   }
 
