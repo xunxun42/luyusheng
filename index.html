@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 18:00 · a8e1ed4">
+<meta name="x-build" content="2026-10-17 18:10 · 90a6a4c">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1358,6 +1358,143 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 }
 
 /* ==========================================================================
+   多人数模式：角色列表 / 身份徽章 / 模式切换 / 座位分配
+   ========================================================================== */
+
+/* ---------- 左侧角色列表（2v2 / 5 人身份） ---------- */
+.foe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.foe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 180, 106, 0.14);
+  background: rgba(12, 26, 21, 0.55);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.foe-row.acting {
+  border-color: rgba(216, 180, 106, 0.55);
+  background: linear-gradient(180deg, rgba(48, 84, 66, 0.45), rgba(12, 26, 21, 0.62));
+}
+.foe-row.dead { opacity: .42; filter: grayscale(.75); cursor: default; }
+.foe-row.targetable {
+  border-color: rgba(240, 217, 155, 0.9);
+  box-shadow: 0 0 0 1px rgba(240, 217, 155, 0.45), 0 0 18px rgba(216, 180, 106, 0.25);
+}
+
+.foe-av {
+  width: 30px; height: 30px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--serif);
+  font-size: 15px;
+  color: #f4ecd8;
+  background: linear-gradient(150deg, #7a2f2c, #2b1210);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(216, 180, 106, 0.3);
+}
+.foe-av.shu { background: linear-gradient(150deg, #7a2f2c, #2b1210); }
+.foe-av.wu { background: linear-gradient(150deg, #2f7a5c, #0f2e22); }
+.foe-av.wei { background: linear-gradient(150deg, #33506e, #101d2b); }
+.foe-av.jin { background: linear-gradient(150deg, #6b3f96, #22102f); }
+
+.foe-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.foe-line1 { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.foe-line1 b { font-family: var(--serif); font-size: 14px; font-weight: 500; color: #f1e7cd; }
+.foe-line1 .kingdom { font-size: 9px; padding: 0 5px; }
+.foe-dist { margin-left: auto; font-style: normal; font-size: 9.5px; color: var(--muted); white-space: nowrap; }
+.foe-line2 { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--muted); }
+.foe-hand, .foe-eq { font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.hp-mini { display: inline-flex; gap: 2px; }
+.hp-mini .g {
+  width: 7px; height: 7px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(216, 180, 106, 0.22);
+}
+.hp-mini .g.on { background: linear-gradient(135deg, #9ff0c3, #2f8f66); box-shadow: 0 0 6px rgba(127, 214, 164, 0.5); }
+.hp-mini .g.on.low { background: linear-gradient(135deg, #ffb0a0, #b0352c); box-shadow: 0 0 6px rgba(215, 106, 95, 0.6); }
+
+/* ---------- 身份徽章 ---------- */
+.role-chip {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 9.5px;
+  font-style: normal;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  color: var(--gold-2);
+  border: 1px solid rgba(216, 180, 106, 0.35);
+  background: rgba(216, 180, 106, 0.1);
+}
+.role-chip.lord { color: #f0d99b; border-color: rgba(240, 217, 155, 0.65); background: rgba(216, 180, 106, 0.18); }
+.role-chip.loyal { color: #9fe3bd; border-color: rgba(127, 214, 164, 0.5); background: rgba(63, 143, 107, 0.16); }
+.role-chip.rebel { color: #f0b3a8; border-color: rgba(215, 106, 95, 0.5); background: rgba(215, 106, 95, 0.15); }
+.role-chip.spy { color: #cbaaf0; border-color: rgba(170, 132, 220, 0.55); background: rgba(120, 80, 180, 0.18); }
+.role-chip.red { color: #f0b3a8; border-color: rgba(215, 106, 95, 0.5); background: rgba(215, 106, 95, 0.15); }
+.role-chip.blue { color: #9fc4e3; border-color: rgba(110, 168, 200, 0.55); background: rgba(80, 130, 170, 0.18); }
+.role-chip.duel { display: none; }
+
+/* ---------- 选将：模式切换 + 座位分配 ---------- */
+.pick-mode {
+  display: flex;
+  gap: 8px;
+  padding: 12px 22px 0;
+  flex-wrap: wrap;
+}
+.mode-tab {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--muted);
+  background: rgba(12, 26, 21, 0.6);
+  border: 1px solid rgba(216, 180, 106, 0.2);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.mode-tab:hover { color: #e6dcc4; border-color: rgba(216, 180, 106, 0.45); }
+.mode-tab.active {
+  color: #1a1206;
+  background: linear-gradient(180deg, var(--gold-2), var(--gold));
+  border-color: rgba(255, 235, 190, 0.55);
+  box-shadow: 0 4px 14px rgba(216, 180, 106, 0.2);
+}
+
+.seat-list { display: flex; flex-direction: column; gap: 8px; }
+.seat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 180, 106, 0.14);
+  background: rgba(16, 32, 26, 0.6);
+}
+.seat-row select { flex: 1; min-width: 0; }
+.seat-tag { font-size: 10.5px; letter-spacing: 1px; color: var(--muted); min-width: 46px; }
+.seat-row.ally .seat-tag { color: #9fe3bd; }
+.seat-row.enemy .seat-tag { color: #f0b3a8; }
+
+
+
+/* ==========================================================================
    触屏 / 移动端
    —— 桌面是 1150px 起的三栏，手机上改为纵向堆叠 + 右侧抽屉（技能 / 记录）
    ========================================================================== */
@@ -1491,6 +1628,28 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   .stat-row .value { white-space: nowrap; max-width: 74px; overflow: hidden; text-overflow: ellipsis; }
   .stat-row .skill-ico, .stat-row .skill-ico svg { width: 12px; height: 12px; }
   .enemy .hint { display: none; }
+
+  /* 多人数：角色列表横向排开，省高度 */
+  .foe-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 6px 8px;
+    max-height: none;
+  }
+  .foe-row { flex: 1 1 46%; padding: 5px 7px; gap: 6px; }
+  .foe-av { width: 24px; height: 24px; font-size: 12px; }
+  .foe-line1 b { font-size: 12.5px; }
+  .foe-dist { font-size: 9px; }
+  .foe-line2 { font-size: 9px; gap: 5px; }
+  .hp-mini .g { width: 6px; height: 6px; }
+  .role-chip { font-size: 9px; padding: 0 4px; margin-left: 4px; }
+
+  /* 选将：模式按钮和座位行收紧 */
+  .pick-mode { padding: 9px 13px 0; gap: 6px; }
+  .mode-tab { font-size: 11px; padding: 6px 11px; }
+  .seat-row { padding: 6px 8px; gap: 8px; }
+  .seat-tag { min-width: 38px; font-size: 10px; }
 
   /* 牌桌 */
   .table { min-height: 0; }
@@ -1741,27 +1900,32 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
     <section class="panel enemy" id="enemyPanel">
       <div class="panel-head">
-        <span class="head-title">敌手</span>
+        <span class="head-title" id="foeHeadTitle">敌手</span>
         <span class="distance" id="enemyDistance">距离 1</span>
       </div>
 
-      <div class="enemy-top">
-        <div class="avatar" id="enemyAvatar"><span id="enemyGlyph">赵</span><i class="avatar-ring"></i></div>
-        <div class="enemy-meta">
-          <div class="name-row">
-            <b id="enemyName">赵云</b>
-            <span class="kingdom" id="enemyKingdom">蜀</span>
+      <div id="foeSolo">
+        <div class="enemy-top">
+          <div class="avatar" id="enemyAvatar"><span id="enemyGlyph">赵</span><i class="avatar-ring"></i></div>
+          <div class="enemy-meta">
+            <div class="name-row">
+              <b id="enemyName">赵云</b>
+              <span class="kingdom" id="enemyKingdom">蜀</span>
+            </div>
+            <div class="subtitle" id="enemyTitle">虎威将军</div>
+            <div class="hp" id="enemyHp"></div>
           </div>
-          <div class="subtitle" id="enemyTitle">虎威将军</div>
-          <div class="hp" id="enemyHp"></div>
         </div>
+
+        <div class="stat-row"><span class="label">手牌</span><span class="value" id="enemyHand">0</span></div>
+        <div class="stat-row"><span class="label">装备</span><span class="value equips" id="enemyEquips">—</span></div>
+        <div class="stat-row"><span class="label">技能</span><span class="value" id="enemySkills">—</span></div>
+
+        <div class="hint" id="enemyHint">对方回合时，你的【银贞】会在此处触发。</div>
       </div>
 
-      <div class="stat-row"><span class="label">手牌</span><span class="value" id="enemyHand">0</span></div>
-      <div class="stat-row"><span class="label">装备</span><span class="value equips" id="enemyEquips">—</span></div>
-      <div class="stat-row"><span class="label">技能</span><span class="value" id="enemySkills">—</span></div>
+      <div class="foe-list" id="foeList" hidden></div>
 
-      <div class="hint" id="enemyHint">对方回合时，你的【银贞】会在此处触发。</div>
       <div class="float-layer" id="enemyFloats"></div>
     </section>
 
@@ -1815,6 +1979,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           <b id="selfName">陆郁生</b>
           <span class="kingdom" id="selfKingdom">吴</span>
           <span class="subtitle-inline" id="selfTitle">素心傲雪</span>
+          <span class="role-chip" id="selfRole" hidden></span>
         </div>
         <div class="hp" id="selfHp"></div>
         <div class="equips-line" id="selfEquips">—</div>
@@ -1856,19 +2021,24 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   <div class="pick-panel">
     <header class="pick-head">
       <div>
-        <h2>选择武将</h2>
-        <p>点左边的武将作为「你」，右边的作为「对手」；技能说明会显示在下方。</p>
+        <h2>准备对局</h2>
+        <p>先选模式 → 左边点你的武将 → 右边每个座位可以手动指定，也可以留「随机」。</p>
       </div>
       <button id="btnClosePick" class="mini">返回对局</button>
     </header>
+    <div class="pick-mode" id="pickMode">
+      <button class="mode-tab active" data-mode="duel">1v1 对战</button>
+      <button class="mode-tab" data-mode="team">2v2 组队</button>
+      <button class="mode-tab" data-mode="identity">5 人身份局</button>
+    </div>
     <div class="pick-body">
       <section class="pick-col">
         <h3>你的武将</h3>
         <div class="pick-grid" id="pickMine"></div>
       </section>
       <section class="pick-col">
-        <h3>对手 <button id="btnRandomFoe" class="mini">随机</button></h3>
-        <div class="pick-grid" id="pickFoe"></div>
+        <h3>其它座位 <button id="btnRandomAll" class="mini">其余随机</button></h3>
+        <div class="seat-list" id="seatList"></div>
       </section>
     </div>
     <footer class="pick-foot">
@@ -2103,6 +2273,64 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     NAME_LABEL[d.name] = d.label;
   });
 
+  /* ----------------------------- 对局模式 / 身份 ----------------------------- */
+
+  const MODE_NAME = { duel: '1v1 对战', team: '2v2 组队', identity: '5 人身份局' };
+  const MODE_SIZE = { duel: 2, team: 4, identity: 5 };
+
+  const ROLE_INFO = {
+    duelist: { name: '对局者', cls: 'duel' },
+    lord: { name: '主公', cls: 'lord' },
+    loyal: { name: '忠臣', cls: 'loyal' },
+    rebel: { name: '反贼', cls: 'rebel' },
+    spy: { name: '内奸', cls: 'spy' },
+    red: { name: '红方', cls: 'red' },
+    blue: { name: '蓝方', cls: 'blue' },
+  };
+
+  // 5 人身份局标准配置：1 主公 / 1 忠臣 / 2 反贼 / 1 内奸
+  const IDENTITY_ROLES = ['lord', 'loyal', 'rebel', 'rebel', 'spy'];
+
+  /**
+   * 按模式给座位分配阵营 / 身份，并做主公体力加成。
+   * 约定：p0 永远是玩家（players[0]），随机只作用在身份落座，不改变座位顺序。
+   */
+  function assignRoles(players, mode, rng) {
+    const rand = rng || Math.random;
+    players.forEach((p) => {
+      p.role = null;
+      p.team = null;
+    });
+
+    if (mode === 'team') {
+      // 2v2：同队不相邻（0/2 vs 1/3），距离才会是 1~2
+      players.forEach((p, i) => {
+        p.team = i % 2 === 0 ? 'red' : 'blue';
+        p.role = p.team;
+      });
+    } else if (mode === 'identity') {
+      const roles = IDENTITY_ROLES.slice(0, players.length);
+      for (let i = roles.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        const t = roles[i];
+        roles[i] = roles[j];
+        roles[j] = t;
+      }
+      players.forEach((p, i) => {
+        p.role = roles[i];
+        if (p.role === 'lord') {
+          p.maxHp += 1; // 主公 +1 体力上限
+          p.hp += 1;
+        }
+      });
+    } else {
+      players.forEach((p) => {
+        p.role = 'duelist';
+      });
+    }
+    return players;
+  }
+
   const SKILL_INFO = {
     yinzhen: {
       name: '银贞',
@@ -2266,6 +2494,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.ai = opts.ai || null;
 
       this.players = opts.players.map((p) => p);
+      this.mode = opts.mode || 'duel'; // duel | team | identity
+      this.resultText = '';
       this.deck = cards.shuffle(cards.buildDeck(), this.rng);
       this.discard = [];
       this.log = [];
@@ -2348,13 +2578,29 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       return this.players.filter((x) => x.alive && x !== p);
     }
 
-    /** 1v1 精简：座位距离恒为 1，±1 马只影响显示（下限 1）。 */
+    /** 圆形座位距离：min(顺时针, 逆时针)，再按 ±1 马修正，下限 1。2 人局恒等于旧行为。 */
     distance(a, b) {
       if (a === b) return 0;
-      const base = 1;
+      const n = this.players.length;
+      const ia = this.players.indexOf(a);
+      const ib = this.players.indexOf(b);
+      if (ia < 0 || ib < 0) return 1;
+      const raw = Math.abs(ia - ib);
+      const seat = n <= 2 ? 1 : Math.min(raw, n - raw);
       const plus = b.equips.horsePlus ? 1 : 0;
       const minus = a.equips.horseMinus ? 1 : 0;
-      return Math.max(1, base + plus - minus);
+      return Math.max(1, seat + plus - minus);
+    }
+
+    /** 是否同一阵营（AI 判断敌我用；1v1 与身份局里「内奸」不算任何人的队友） */
+    isAlly(a, b) {
+      if (!a || !b || a === b || !a.alive || !b.alive) return false;
+      if (this.mode === 'team') return a.team === b.team;
+      if (this.mode === 'identity') {
+        const lordSide = (r) => r === 'lord' || r === 'loyal';
+        return lordSide(a.role) && lordSide(b.role);
+      }
+      return false;
     }
 
     rangeOf(p) {
@@ -2773,7 +3019,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
       // 武库：其他角色用到与杜预「记录」同名的牌时可以反制（可能把杜预从目标里摘掉）
       targets = await this.tryWuku(p, card, targets);
-      if (this.over) return;
+      if (this.over) {
+        // 牌局在武库结算中结束，也要把用掉的牌送进弃牌堆，否则牌数会少一张
+        if (!card.virtual) this.toDiscard(card, p, false);
+        this.emit();
+        return;
+      }
 
       // 军势：使用与「记录」同名的牌，摸一张
       if (p.skills.junshi && this.matchesRecord(p, card)) {
@@ -3253,14 +3504,51 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     checkGameOver() {
       if (this.over) return;
       const alive = this.alivePlayers();
-      if (alive.length <= 1) {
-        this.over = true;
-        this.winner = alive[0] || null;
-        if (this.winner) {
-          this.pushLog(`—— ${this.winner.name} 获得胜利 ——`, 'system');
-        }
-        this.emit();
+
+      if (!this.mode || this.mode === 'duel') {
+        if (alive.length <= 1) this.finish(alive[0] || null, '');
+        return;
       }
+
+      if (this.mode === 'team') {
+        const sides = new Set(alive.map((p) => p.team));
+        if (sides.size <= 1) {
+          const side = alive.length ? alive[0].team : null;
+          this.finish(
+            alive[0] || null,
+            side === 'red' ? '你方（红）获胜' : side === 'blue' ? '对方（蓝）获胜' : '平局'
+          );
+        }
+        return;
+      }
+
+      // 5 人身份局
+      const count = (role) => alive.filter((p) => p.role === role).length;
+      const lord = count('lord');
+      const rebels = count('rebel');
+      const spies = count('spy');
+      const loyals = count('loyal');
+
+      if (lord === 0) {
+        // 主公已死：只剩内奸一人则内奸胜，否则反贼胜
+        if (alive.length === 1 && spies === 1 && rebels === 0 && loyals === 0) {
+          this.finish(alive[0], '内奸获胜');
+        } else {
+          this.finish(null, '反贼获胜');
+        }
+        return;
+      }
+      if (rebels === 0 && spies === 0) this.finish(null, '主公阵营获胜');
+    }
+
+    /** 统一结算入口：winner 是代表角色，resultText 是展示用文案 */
+    finish(winner, text) {
+      if (this.over) return;
+      this.over = true;
+      this.winner = winner || null;
+      this.resultText = text || (winner ? `${winner.name} 获得胜利` : '平局');
+      this.pushLog(`—— ${this.resultText} ——`, 'system');
+      this.emit();
     }
 
     /* ------------------------------ 阶段 ------------------------------ */
@@ -3465,17 +3753,26 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     async start() {
       if (this.started) return;
       this.started = true;
-      this.currentPlayerId = this.players[0].id;
-      const human = this.players.find((p) => !p.isAI);
-      this.pushLog(
-        `牌局开始：${this.players[0].name}（${this.players[0].maxHp} 体力） vs ${this.players[1].name}（${this.players[1].maxHp} 体力）`,
-        'system'
-      );
+
+      // 身份局由主公先手；其余模式从 0 号位开始
+      const lord = this.players.find((p) => p.role === 'lord');
+      const first = lord || this.players[0];
+      this.turnIndex = this.players.indexOf(first);
+      this.currentPlayerId = first.id;
+
+      const lineup = this.players
+        .map((p) => {
+          const r = ROLE_INFO[p.role];
+          return `${p.name}（${p.maxHp}${r ? '·' + r.name : ''}）`;
+        })
+        .join('、');
+      this.pushLog(`牌局开始（${MODE_NAME[this.mode] || '对战'}）：${lineup}`, 'system');
       for (const p of this.players) await this.draw(p, 4);
       this.emit();
 
       let guard = 0;
-      while (!this.over && !this.stopped && guard++ < 400) {
+      const maxTurns = 200 + this.players.length * 120;
+      while (!this.over && !this.stopped && guard++ < maxTurns) {
         const p = this.current;
         if (!p || !p.alive) {
           this.nextTurn();
@@ -3514,7 +3811,19 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     }
   }
 
-  const api = { Engine, createPlayer, GENERAL_DATA, SKILL_INFO, SLOT_ORDER };
+  const api = {
+    Engine,
+    createPlayer,
+    GENERAL_DATA,
+    SKILL_INFO,
+    SLOT_ORDER,
+    assignRoles,
+    ROLE_INFO,
+    MODE_NAME,
+    MODE_SIZE,
+    IDENTITY_ROLES,
+    NAME_LABEL,
+  };
   global.SGS = global.SGS || {};
   global.SGS.Engine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -3633,8 +3942,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           return opts[opts.length - 1].value;
         }
 
-        case 'pickTarget':
-          return req.candidates && req.candidates.length ? req.candidates[0] : null;
+        case 'pickTarget': {
+          const cands = (req.candidates || []).map((id) => E.get(id)).filter(Boolean);
+          if (!cands.length) return null;
+          // 优先选敌人；没有敌人（或身份局里判断不出阵营）就按血量从低到高挑
+          const enemies = cands.filter((c) => !E.isAlly(p, c));
+          const pool = (enemies.length ? enemies : cands).slice();
+          pool.sort((a, b) => a.hp - b.hp || a.hand.length - b.hand.length);
+          return pool[0].id;
+        }
 
         default:
           return null;
@@ -3654,9 +3970,13 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
     /* --------------------------- 出牌阶段 --------------------------- */
     playAction(E, p) {
-      const foes = E.aliveOthers(p);
-      if (!foes.length) return { type: 'end' };
-      const foe = foes[0];
+      const others = E.aliveOthers(p);
+      if (!others.length) return { type: 'end' };
+      // 打敌人，不打队友；优先血最少的（2v2 / 身份局里才不会误伤）
+      const enemies = others.filter((o) => !E.isAlly(p, o));
+      const pool = (enemies.length ? enemies : others).slice();
+      pool.sort((a, b) => a.hp - b.hp || a.hand.length - b.hand.length);
+      const foe = pool[0];
       const has = (name) => p.hand.filter((c) => c.name === name);
       const shaPool = p.hand.filter((c) => c.name === 'sha' || (p.skills.longdan && c.name === 'shan'));
 
@@ -3755,7 +4075,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           (p.skills.wusheng ? p.hand.find((c) => c.name === 'shan' && c.red) : null);
         if (sha) {
           const chk = E.canPlay(p, sha);
-          if (chk.ok && chk.targets.length) return { type: 'card', cardId: sha.id, targets: [chk.targets[0]] };
+          if (chk.ok && chk.targets.length) {
+            const t = chk.targets.includes(foe.id) ? foe.id : chk.targets[0];
+            return { type: 'card', cardId: sha.id, targets: [t] };
+          }
         }
       }
 
@@ -3807,19 +4130,24 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
     pickScreen: $('#pickScreen'),
     pickMine: $('#pickMine'),
-    pickFoe: $('#pickFoe'),
     pickDetail: $('#pickDetail'),
     btnStartPick: $('#btnStartPick'),
     btnClosePick: $('#btnClosePick'),
-    btnRandomFoe: $('#btnRandomFoe'),
+    pickMode: $('#pickMode'),
+    seatList: $('#seatList'),
+    btnRandomAll: $('#btnRandomAll'),
 
     selfPortrait: $('#selfPortrait'),
     selfGlyph: $('#selfGlyph'),
     selfName: $('#selfName'),
     selfKingdom: $('#selfKingdom'),
     selfTitle: $('#selfTitle'),
+    selfRole: $('#selfRole'),
 
     enemyPanel: $('#enemyPanel'),
+    foeSolo: $('#foeSolo'),
+    foeList: $('#foeList'),
+    foeHeadTitle: $('#foeHeadTitle'),
     enemyAvatar: $('#enemyAvatar'),
     enemyName: $('#enemyName'),
     enemyGlyph: $('#enemyGlyph'),
@@ -3871,11 +4199,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     gameId: 0,
     watch: false,
     me: 'luyusheng',
-    foe: 'zhaoyun',
-    pick: { me: 'luyusheng', foe: 'zhaoyun' },
+    gameMode: 'duel', // duel | team | identity
+    // pick.others：其它座位，值是武将 key 或 'random'
+    pick: { me: 'luyusheng', others: ['zhaoyun'] },
     mode: 'idle',
     ask: null,
     playResolve: null,
+    pending: null,
+    pendingTargets: null,
     lastHandSig: '',
     logShown: 0,
     lastPlayKey: '',
@@ -3943,11 +4274,51 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       `${label}<span class="phase-owner${mine ? '' : ' foe'}">${who}</span>`;
   }
 
-  /* ------------------------------ 选将 ------------------------------ */
+  /* ------------------------------ 选将 / 模式 ------------------------------ */
+
+  const MODE_SIZE = { duel: 2, team: 4, identity: 5 };
+  const MODE_NAME = { duel: '1v1 对战', team: '2v2 组队', identity: '5 人身份局' };
+
+  /** 座位的显示标签：模式不同，队友/敌人/座位号不同 */
+  function seatLabel(mode, index) {
+    if (mode === 'team') return index % 2 === 0 ? '队友' : '敌方';
+    if (mode === 'identity') return `座位 ${index + 1}`;
+    return '对手';
+  }
+
+  /** 把「random」解析成具体武将，尽量不重复 */
+  function resolveOthers() {
+    const size = MODE_SIZE[state.gameMode] || 2;
+    const keys = Object.keys(GD);
+    const used = new Set([state.pick.me]);
+    const out = [];
+    for (let i = 0; i < size - 1; i++) {
+      let g = state.pick.others[i];
+      if (!g || g === 'random' || !GD[g]) {
+        const pool = keys.filter((k) => !used.has(k));
+        g = (pool.length ? pool : keys)[Math.floor(Math.random() * (pool.length || keys.length))];
+      }
+      used.add(g);
+      out.push(g);
+    }
+    return out;
+  }
+
+  function setMode(mode) {
+    state.gameMode = mode;
+    if (!MODE_SIZE[mode]) state.gameMode = 'duel';
+    const need = MODE_SIZE[state.gameMode] - 1;
+    const cur = state.pick.others.slice();
+    while (cur.length < need) cur.push('random');
+    state.pick.others = cur.slice(0, need);
+    renderPicker();
+  }
 
   function openPicker() {
     state.pick.me = state.me;
-    state.pick.foe = state.foe;
+    const need = MODE_SIZE[state.gameMode] - 1;
+    while (state.pick.others.length < need) state.pick.others.push('random');
+    state.pick.others = state.pick.others.slice(0, need);
     renderPicker();
     el.btnClosePick.hidden = !state.E;
     el.pickScreen.hidden = false;
@@ -3956,7 +4327,33 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   function renderPicker() {
     const keys = Object.keys(GD);
     el.pickMine.innerHTML = keys.map((k) => genCardHtml(k, state.pick.me === k)).join('');
-    el.pickFoe.innerHTML = keys.map((k) => genCardHtml(k, state.pick.foe === k)).join('');
+
+    // 模式按钮高亮
+    Array.from(el.pickMode.querySelectorAll('[data-mode]')).forEach((b) => {
+      b.classList.toggle('active', b.dataset.mode === state.gameMode);
+    });
+
+    // 座位列表：每行一个下拉（含「随机」）
+    const options = (sel) =>
+      `<option value="random"${sel === 'random' ? ' selected' : ''}>🎲 随机</option>` +
+      keys
+        .map(
+          (k) =>
+            `<option value="${k}"${sel === k ? ' selected' : ''}>${GD[k].name} · ${GD[k].kingdom}</option>`
+        )
+        .join('');
+
+    el.seatList.innerHTML = state.pick.others
+      .map((g, i) => {
+        const label = seatLabel(state.gameMode, i + 1);
+        const cls = state.gameMode === 'team' ? (i + 1) % 2 === 0 ? 'ally' : 'enemy' : '';
+        return `<label class="seat-row ${cls}">
+          <span class="seat-tag">${label}</span>
+          <select data-seat="${i}">${options(g)}</select>
+        </label>`;
+      })
+      .join('');
+
     renderPickDetail();
   }
 
@@ -3977,7 +4374,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   function renderPickDetail() {
     const g = GD[state.pick.me];
     const list = g.skills.map((k) => SKILL_INFO[k]).filter(Boolean);
+    const size = MODE_SIZE[state.gameMode] || 2;
     el.pickDetail.innerHTML =
+      `<b>${MODE_NAME[state.gameMode]}</b> · ${size} 人<br>` +
       `<b>${g.name}</b>（${g.kingdom} · ${g.maxHp} 体力）　` +
       list.map((x) => `<span class="sk">【${x.name}】</span>${x.tagline}`).join('　·　');
   }
@@ -3990,7 +4389,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         return `<option value="${k}">${g.name} · ${names}</option>`;
       })
       .join('');
-    el.foeSelect.value = state.foe;
+    const first = state.pick.others[0];
+    if (first && first !== 'random' && GD[first]) el.foeSelect.value = first;
+    el.foeSelect.parentElement.hidden = state.gameMode !== 'duel';
   }
 
   function startGame() {
@@ -4025,11 +4426,16 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     el.feed.innerHTML = '';
     el.prompt.hidden = true;
 
+    const others = resolveOthers();
+    const players = [createPlayer({ id: 'p0', general: state.me, isAI: state.watch })];
+    others.forEach((g, i) => {
+      players.push(createPlayer({ id: 'p' + (i + 1), general: g, isAI: true }));
+    });
+    S.Engine.assignRoles(players, state.gameMode);
+
     const E = new Engine({
-      players: [
-        createPlayer({ id: 'p0', general: state.me, isAI: state.watch }),
-        createPlayer({ id: 'p1', general: state.foe, isAI: true }),
-      ],
+      players,
+      mode: state.gameMode,
       ai: AI,
       rng: S.cards.makeRng((Math.random() * 1e9) | 0),
       pace: state.watch ? 380 : 300,
@@ -4038,7 +4444,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     state.E = E;
 
     applyBrand(state.me);
-    el.foeSelect.value = state.foe;
+    fillFoeSelect();
 
     E.on(() => {
       if (myId === state.gameId) render();
@@ -4065,9 +4471,21 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     if (!E || !E.over || state.over) return;
     state.over = true;
     closeDrawer();
-    const won = E.winner && E.winner.id === 'p0';
-    const title = E.winner ? (state.watch ? E.winner.name : won ? '胜' : '败') : '平';
-    const sub = E.winner ? `${E.winner.name} 获胜` : '回合用尽';
+
+    const me = E.get('p0');
+    const resultText = E.resultText || (E.winner ? `${E.winner.name} 获胜` : '平局');
+    // 判自己赢没赢：1v1 看 winner；组队看阵营；身份局看文案里是不是自己那一边
+    let won = false;
+    if (E.mode === 'duel') won = !!(E.winner && E.winner.id === 'p0');
+    else if (E.mode === 'team') won = /你方/.test(resultText);
+    else {
+      const role = me && me.role;
+      if (/主公阵营/.test(resultText)) won = role === 'lord' || role === 'loyal';
+      else if (/反贼/.test(resultText)) won = role === 'rebel';
+      else if (/内奸/.test(resultText)) won = role === 'spy';
+    }
+    const title = state.watch ? resultText : won ? '胜' : /平/.test(resultText) ? '平' : '败';
+
     const s = E.stats;
     const lu = E.get('p0');
     const hasLuSkills = lu && lu.general === 'luyusheng';
@@ -4077,7 +4495,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     div.innerHTML = `
       <div class="result">
         <h2>${title}</h2>
-        <p>${sub}</p>
+        <p>${resultText}</p>
         <div class="stats">
           回合 ${s.turns} · 造成伤害 ${lu.stats.damageDealt} · 受到伤害 ${lu.stats.damageTaken}<br>
           ${hasLuSkills ? `银贞 阳 ${s.yinzhenYang} / 阴 ${s.yinzhenYin} · 洁霜 ${s.jieshuangUses} 次 · 瑶心 ${s.yaoxinUses} 次` : ''}
@@ -4100,17 +4518,18 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     const E = state.E;
     if (!E) return;
     const lu = E.players[0];
-    const foe = E.players[1];
+    const foes = E.players.slice(1);
+    const cur = E.get(E.currentPlayerId);
 
     el.hudRound.textContent = String(E.round);
-    el.hudTurn.textContent = E.currentPlayerId === 'p0' ? '你的回合' : E.currentPlayerId ? foe.name + ' 回合' : '—';
-    el.hudMode.textContent = state.watch ? '观战' : '对战';
+    el.hudTurn.textContent = E.currentPlayerId === 'p0' ? '你的回合' : cur ? cur.name + ' 回合' : '—';
+    el.hudMode.textContent = state.watch ? '观战' : MODE_NAME[state.gameMode] || '对战';
 
     renderPhase(E);
-    renderEnemy(E, lu, foe);
+    renderFoes(E, lu, foes);
     renderSelf(E, lu);
     renderSkills(E, lu);
-    renderSkillPanel(E, lu, foe);
+    renderSkillPanel(E, lu, foes);
     renderHand();
     renderPrompt();
     renderStage(E);
@@ -4119,6 +4538,61 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     updateSandbox();
     checkHpFloats(E);
     el.handEmpty.hidden = lu.hand.length > 0;
+  }
+
+  /* 多人数模式：左侧变成「角色列表」，每行一个可点击的目标 */
+  function renderFoes(E, lu, foes) {
+    const multi = E.players.length > 2;
+    el.foeSolo.hidden = multi;
+    el.foeList.hidden = !multi;
+    el.foeHeadTitle.textContent = multi ? `其他角色 · ${foes.length}` : '敌手';
+    el.enemyDistance.hidden = multi;
+
+    if (!multi) {
+      renderEnemy(E, lu, foes[0]);
+      return;
+    }
+
+    el.foeList.innerHTML = foes.map((f) => foeRowHtml(E, lu, f)).join('');
+  }
+
+  function foeRowHtml(E, lu, f) {
+    const role = S.Engine.ROLE_INFO[f.role];
+    const roleHtml = role ? `<span class="role-chip ${role.cls}">${role.name}</span>` : '';
+    const cur = E.currentPlayerId === f.id;
+    const dist = E.distance(lu, f);
+    return `<div class="foe-row${cur ? ' acting' : ''}${f.alive ? '' : ' dead'}" data-foe-id="${f.id}">
+      <span class="foe-av ${sideClass(f.kingdom)}">${f.name[0]}</span>
+      <span class="foe-main">
+        <span class="foe-line1">
+          <b>${f.name}</b>
+          <span class="kingdom ${sideClass(f.kingdom)}">${f.kingdom}</span>
+          ${roleHtml}
+          <i class="foe-dist">距离 ${dist}</i>
+        </span>
+        <span class="foe-line2">
+          ${gemsInline(f)}
+          <i class="foe-hand">手牌 ${f.hand.length}</i>
+          <i class="foe-eq">${equipInline(f)}</i>
+        </span>
+      </span>
+    </div>`;
+  }
+
+  function gemsInline(p) {
+    let s = '<span class="hp-mini">';
+    for (let i = 0; i < p.maxHp; i++) {
+      s += `<i class="g${i < p.hp ? ' on' : ''}${p.hp <= 1 && i < p.hp ? ' low' : ''}"></i>`;
+    }
+    return s + '</span>';
+  }
+
+  function equipInline(p) {
+    const names = [];
+    ['weapon', 'armor', 'horsePlus', 'horseMinus'].forEach((s) => {
+      if (p.equips[s]) names.push(p.equips[s].label);
+    });
+    return names.length ? names.join('/') : '—';
   }
 
   /* 技能状态的一行摘要（敌人面板 / 技能条共用） */
@@ -4167,6 +4641,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     el.selfKingdom.textContent = lu.kingdom;
     el.selfKingdom.className = 'kingdom ' + sideClass(lu.kingdom);
     el.selfTitle.textContent = lu.title;
+
+    const role = S.Engine.ROLE_INFO[lu.role];
+    if (role && state.gameMode !== 'duel') {
+      el.selfRole.hidden = false;
+      el.selfRole.textContent = role.name;
+      el.selfRole.className = 'role-chip ' + role.cls;
+    } else {
+      el.selfRole.hidden = true;
+    }
 
     const hasArt = lu.general === 'luyusheng';
     el.selfPortrait.hidden = !hasArt;
@@ -4351,15 +4834,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     </div>`;
   }
 
-  function renderSkillPanel(E, lu, foe) {
+  function renderSkillPanel(E, lu, foes) {
     const keys = (GD[lu.general] && GD[lu.general].skills) || Object.keys(lu.skills);
     const sig = [
       E.round,
       lu.general,
-      foe.general,
+      foes.map((f) => f.general).join(','),
       keys.map((k) => (lu.skills[k] ? JSON.stringify(lu.skills[k]) : 'x')).join(','),
       lu.flags && lu.flags.record ? lu.flags.record : '-',
-      Object.keys(foe.skills).join(','),
     ].join('|');
     if (sig === state.skillSig) return;
     state.skillSig = sig;
@@ -4433,15 +4915,20 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       }
     });
 
-    if (foe.skills.yaoxin && foe.general !== 'luyusheng') {
-      html += `<div class="side-head">${foe.name} 的额外技能</div>`;
-      html += skillCardHtml('yaoxin', { state: '对手持有', stateCls: 'used', meta: '你传承给他的限定技，他濒死时会用。' });
-    }
+    foes.forEach((f) => {
+      if (f.skills.yaoxin && f.general !== 'luyusheng') {
+        html += `<div class="side-head">${f.name} 的额外技能</div>`;
+        html += skillCardHtml('yaoxin', { state: '对手持有', stateCls: 'used', meta: '你传承给他的限定技，他濒死时会用。' });
+      }
+    });
 
-    html += `<details class="side-fold"><summary>对手 · ${foe.name} 的技能</summary><div class="fold-body">`;
-    Object.keys(foe.skills).forEach((k) => {
-      if (!SKILL_INFO[k] || k === 'yaoxin') return;
-      html += skillCardHtml(k, { state: '被动' });
+    html += `<details class="side-fold"><summary>其他角色 · 技能</summary><div class="fold-body">`;
+    foes.forEach((f) => {
+      html += `<div class="side-head">${f.name}（${f.kingdom}）</div>`;
+      Object.keys(f.skills).forEach((k) => {
+        if (!SKILL_INFO[k] || k === 'yaoxin') return;
+        html += skillCardHtml(k, { state: '被动' });
+      });
     });
     html += `</div></details>`;
 
@@ -4533,7 +5020,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       el.promptActions.innerHTML = '';
       el.promptTag.textContent = '';
       el.promptText.textContent = '';
-      el.enemyPanel.classList.remove('targetable');
+      refreshTargetMarks();
       return;
     }
     const req = a.req;
@@ -4579,10 +5066,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     }
 
     if (req.kind === 'pickTarget') {
-      el.enemyPanel.classList.add('targetable');
-    } else {
-      el.enemyPanel.classList.remove('targetable');
+      // 目标高亮交给 refreshTargetMarks 统一处理（1v1 面板 / 多人数逐行）
     }
+    refreshTargetMarks();
 
     if (cardOptions.length) {
       const hint = document.createElement('div');
@@ -4596,7 +5082,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     const a = state.ask;
     if (!a) return;
     state.ask = null;
-    el.enemyPanel.classList.remove('targetable');
+    refreshTargetMarks();
     renderPrompt();
     renderHand();
     a.resolve(value);
@@ -4627,22 +5113,67 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       toast(chk.reason);
       return;
     }
-    const targets = chk.needTargets ? chk.targets.slice(0, 1) : [];
-    finishAction({ type: 'card', cardId: id, targets });
-  });
-
-  el.enemyPanel.addEventListener('click', () => {
-    const E = state.E;
-    if (!E) return;
-    if (state.ask && state.ask.req.kind === 'pickTarget') {
-      const cands = state.ask.req.candidates || [];
-      if (cands.length === 1) resolveAsk(cands[0]);
+    if (!chk.needTargets) {
+      finishAction({ type: 'card', cardId: id, targets: [] });
       return;
     }
+    if (chk.targets.length === 1) {
+      finishAction({ type: 'card', cardId: id, targets: [chk.targets[0]] });
+      return;
+    }
+    // 多个合法目标：进入选目标模式，等玩家点左侧角色
+    state.mode = 'target';
+    state.pending = card;
+    state.pendingTargets = chk.targets.slice();
+    refreshTargetMarks();
+    toast('点击左侧角色选择目标');
+  });
+
+  el.enemyPanel.addEventListener('click', (ev) => {
+    const E = state.E;
+    if (!E) return;
+    const row = ev.target.closest('[data-foe-id]');
+    const multi = E.players.length > 2;
+    const id = row ? row.dataset.foeId : 'p1';
+
+    if (state.ask && state.ask.req.kind === 'pickTarget') {
+      const cands = state.ask.req.candidates || [];
+      if (cands.length === 1) { resolveAsk(cands[0]); return; }
+      if (row && cands.includes(id)) resolveAsk(id);
+      else if (!multi && cands.includes('p1')) resolveAsk('p1');
+      return;
+    }
+
     if (state.mode === 'target' && state.pending && state.playResolve) {
-      finishAction({ type: 'card', cardId: state.pending.id, targets: ['p1'] });
+      const valid = state.pendingTargets || [];
+      if (valid.includes(id)) {
+        finishAction({ type: 'card', cardId: state.pending.id, targets: [id] });
+      } else {
+        toast('该角色不在可选范围内');
+      }
     }
   });
+
+  /* 把「可选择的目标」标在角色上：1v1 标整个敌方面板，多人数逐行标 */
+  function refreshTargetMarks() {
+    const ids = new Set();
+    if (state.ask && state.ask.req.kind === 'pickTarget') {
+      (state.ask.req.candidates || []).forEach((x) => ids.add(x));
+    } else if (state.mode === 'target' && state.pendingTargets) {
+      state.pendingTargets.forEach((x) => ids.add(x));
+    }
+
+    const E = state.E;
+    const multi = !!E && E.players.length > 2;
+    if (multi) {
+      el.enemyPanel.classList.remove('targetable');
+      Array.from(el.foeList.querySelectorAll('[data-foe-id]')).forEach((r) => {
+        r.classList.toggle('targetable', ids.has(r.dataset.foeId));
+      });
+    } else {
+      el.enemyPanel.classList.toggle('targetable', ids.size > 0);
+    }
+  }
 
   function finishAction(action) {
     const r = state.playResolve;
@@ -4650,6 +5181,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     state.playResolve = null;
     state.mode = 'idle';
     state.pending = null;
+    state.pendingTargets = null;
+    refreshTargetMarks();
     renderPrompt();
     renderHand();
     updateEndButton();
@@ -4663,7 +5196,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   function updateEndButton() {
     const active = !!state.playResolve;
     el.btnEnd.disabled = !active;
-    el.turnHint.textContent = active ? '你的出牌阶段' : state.E && state.E.currentPlayerId === 'p1' ? '对方回合' : '等待中';
+    const cur = state.E ? state.E.get(state.E.currentPlayerId) : null;
+    el.turnHint.textContent = active ? '你的出牌阶段' : cur ? `${cur.name} 的回合` : '等待中';
   }
 
   /* ------------------------------ 舞台 / 日志 ------------------------------ */
@@ -4827,7 +5361,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       const prev = state.hpSeen[p.id];
       if (prev != null && prev !== p.hp) {
         const d = p.hp - prev;
-        const layer = p.id === 'p0' ? el.selfFloats : el.enemyFloats;
+        // 多人数模式只有自己面板能挂飘字（左侧是行列表，没有独立图层）
+        const layer = p.id === 'p0' ? el.selfFloats : E.players.length > 2 ? el.selfFloats : el.enemyFloats;
         spawnFloat(layer, (d > 0 ? '+' : '−') + Math.abs(d), d > 0 ? 'heal' : 'dmg');
       }
       state.hpSeen[p.id] = p.hp;
@@ -5096,7 +5631,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   el.btnWatch.addEventListener('click', toggleWatch);
 
   el.foeSelect.addEventListener('change', () => {
-    state.foe = el.foeSelect.value;
+    state.pick.others[0] = el.foeSelect.value;
     startGame();
   });
 
@@ -5107,22 +5642,25 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     state.pick.me = b.dataset.gen;
     renderPicker();
   });
-  el.pickFoe.addEventListener('click', (ev) => {
-    const b = ev.target.closest('[data-gen]');
+  el.pickMode.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-mode]');
     if (!b) return;
-    state.pick.foe = b.dataset.gen;
+    setMode(b.dataset.mode);
+  });
+  el.seatList.addEventListener('change', (ev) => {
+    const sel = ev.target.closest('select[data-seat]');
+    if (!sel) return;
+    const i = Number(sel.dataset.seat);
+    state.pick.others[i] = sel.value;
     renderPicker();
   });
-  el.btnRandomFoe.addEventListener('click', () => {
-    const pool = Object.keys(GD).filter((k) => k !== state.pick.me);
-    state.pick.foe = pool[Math.floor(Math.random() * pool.length)];
+  el.btnRandomAll.addEventListener('click', () => {
+    state.pick.others = state.pick.others.map(() => 'random');
     renderPicker();
   });
   el.btnStartPick.addEventListener('click', () => {
     state.me = state.pick.me;
-    state.foe = state.pick.foe;
     el.pickScreen.hidden = true;
-    el.foeSelect.value = state.foe;
     startGame();
   });
   el.btnClosePick.addEventListener('click', () => {
@@ -5144,7 +5682,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       return `<div class="rule-skill"><b>${s.name}</b><i>${s.kind}</i>\n${s.text}</div>`;
     };
     const me = GD[state.me];
-    const foe = GD[state.foe];
+    const foe = GD[state.pick.others[0]] || GD.zhaoyun;
     const pool = Object.values(GD)
       .map((g) => `${g.name}（${g.maxHp}）`)
       .join('、');
@@ -5169,10 +5707,17 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       <h3>武将池（${Object.keys(GD).length} 人）</h3>
       <p>${pool}</p>
 
+      <h3>对局模式</h3>
+      <p>· <b>1v1 对战</b>：2 人，座位距离恒为 1（±1 马会变成 1~2）。<br>
+         · <b>2v2 组队</b>：4 人，座位 1/3 号位同队（0-2 对 1-3），同队不相邻，距离 1~2；一队全灭即分胜负。<br>
+         · <b>5 人身份局</b>：1 主公 / 1 忠臣 / 2 反贼 / 1 内奸，主公 +1 体力上限并由主公先手。<br>
+         　　主公与忠臣全灭反贼和内奸获胜；主公阵亡则反贼获胜（若只剩内奸一人则内奸获胜）。<br>
+         　　身份在选将后随机分配，界面上直接可见（沙盒用途）。</p>
+
       <h3>实现说明（与实体牌的差异）</h3>
-      <p>· 这是 1v1 精简引擎：基础距离为 1，但 ±1 马会改变它（1~2），所以【银贞】的「距离 ≤1」并非永远成立。<br>
+      <p>· 牌桌距离按圆形座位算：min(顺时针, 逆时针)，再按 ±1 马修正，下限 1。<br>
          · 牌堆 75 张（含【酒】）；未加入【无懈可击】【铁索连环】、判定改判、连环状态等。<br>
-         · 【桃】只能用于自己；濒死时也只有自己能用【桃】自救（1v1 无队友）。<br>
+         · 【桃】只能用于自己；濒死时也只有自己能用【桃】自救（没有队友救人的机制）。<br>
          · 【瑶心】的「摸等量牌」按实际回复的体力数计算；【瑶心】可传承给对手——对手会在其濒死时发动它，慎选。<br>
          · 【洁霜】按「所有手牌」字面结算：手牌为 0 时也可发动（摸 0 张，但回合结束仍可收下对方弃牌）。<br>
          · 【刚烈】简化：判定非红桃时，伤害来源失去 1 点体力（省略「弃两张手牌」的选项）。<br>
@@ -5208,7 +5753,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   fillFoeSelect();
   applyBrand(state.me);
   if (GD[params.get('me')]) state.me = params.get('me');
-  if (GD[params.get('foe')]) state.foe = params.get('foe');
+  state.pick.me = state.me;
+  if (params.get('mode') && MODE_SIZE[params.get('mode')]) setMode(params.get('mode'));
+  if (GD[params.get('foe')]) state.pick.others[0] = params.get('foe');
   fillFoeSelect();
   applyBrand(state.me);
   if (params.has('selftest') || params.has('watch') || params.has('play')) startGame();
@@ -5265,6 +5812,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           const node = el.hand.querySelector(`[data-id="${card.id}"]`);
           if (node) node.click();
           else trace.push('node-missing');
+
+          // 多人数模式里需要先选目标：点第一个可选的角色行
+          if (state.mode === 'target') {
+            const want = (state.pendingTargets || [])[0];
+            const row = want ? el.foeList.querySelector(`[data-foe-id="${want}"]`) : null;
+            if (row) { trace.push('target:' + want); row.click(); }
+            else if (want) { trace.push('target-missing'); el.btnEnd.click(); }
+          }
         } else {
           trace.push('end-turn');
           el.btnEnd.click();
