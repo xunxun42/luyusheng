@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 18:10 · 90a6a4c">
+<meta name="x-build" content="2026-10-17 18:12 · decc28f">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5771,9 +5771,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     let steps = 0;
     let plays = 0;
     let asks = 0;
+    let jsErr = '';
 
     window.addEventListener('error', (e) => {
-      document.title = 'SELFTEST FAIL js: ' + (e.message || 'error');
+      jsErr = e.message || 'error';
+      document.title = 'SELFTEST FAIL js: ' + jsErr;
     });
 
     const pickAnswer = (req) => {
@@ -5788,9 +5790,13 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     };
 
     const tick = () => {
-      steps++;
       if (state.over) return finish('over');
-      if (steps > 40) return finish('limit');
+      // 只有真正需要玩家动作时才计步：多人数局里大部分 tick 都在等 AI，不该算进度
+      const busy = !!state.ask || !!state.playResolve;
+      if (busy) {
+        steps++;
+        if (steps > 60) return finish('limit');
+      }
 
       if (state.ask) {
         const req = state.ask.req;
@@ -5829,8 +5835,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     };
 
     const finish = (why) => {
-      const ok = plays >= 3 && asks >= 1;
-      document.title = 'SELFTEST ' + (ok ? 'PASS' : 'FAIL') + ' why=' + why + ' plays=' + plays + ' asks=' + asks;
+      // 5 人局里玩家平均 5 回合才动一次，常常没打满 3 张牌就分胜负了，
+      // 所以「牌局正常结束」也算通过；有 JS 报错则一律 FAIL。
+      const ok = !jsErr && (state.over || (plays >= 3 && asks >= 1));
+      document.title =
+        'SELFTEST ' + (ok ? 'PASS' : 'FAIL') + ' why=' + why + ' plays=' + plays + ' asks=' + asks;
       const box = document.createElement('div');
       box.id = 'selftest-result';
       box.textContent = document.title + ' | ' + trace.slice(-14).join(' ');
