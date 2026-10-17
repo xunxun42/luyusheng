@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 19:41 · c00a0c4">
+<meta name="x-build" content="2026-10-18 00:09 · 0257e54">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -712,6 +712,54 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
 .self-meta { min-width: 0; }
 .equips-line { font-size: 11px; color: var(--gold-2); margin-top: 6px; line-height: 1.5; }
+
+/* 出牌阶段：可点击发动的主动技 */
+.play-skills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+.play-skills-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #7c8f7f;
+  margin-right: 2px;
+}
+.play-skill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(198, 162, 74, 0.55);
+  background: linear-gradient(180deg, rgba(70, 58, 26, 0.62), rgba(38, 32, 16, 0.72));
+  color: #f0dda8;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+}
+.play-skill i {
+  font-style: normal;
+  font-size: 10px;
+  color: #a99a6e;
+  letter-spacing: 0;
+}
+.play-skill:hover {
+  transform: translateY(-1px);
+  border-color: #d8b455;
+  box-shadow: 0 4px 14px rgba(198, 162, 74, 0.28);
+}
+.play-skill:active { transform: translateY(0); }
+.play-skill.green { border-color: rgba(110, 176, 118, 0.6); color: #cfe8bf; background: linear-gradient(180deg, rgba(34, 62, 40, 0.72), rgba(20, 36, 24, 0.78)); }
+.play-skill.violet { border-color: rgba(160, 132, 214, 0.6); color: #ddcff3; background: linear-gradient(180deg, rgba(52, 40, 78, 0.72), rgba(30, 24, 46, 0.78)); }
+.play-skill.cyan { border-color: rgba(96, 176, 190, 0.6); color: #c6e9ef; background: linear-gradient(180deg, rgba(28, 58, 64, 0.72), rgba(18, 36, 40, 0.78)); }
+.play-skill.red { border-color: rgba(200, 108, 96, 0.6); color: #f3cec6; background: linear-gradient(180deg, rgba(74, 34, 30, 0.72), rgba(44, 20, 18, 0.78)); }
+.play-skill.blue { border-color: rgba(108, 146, 210, 0.6); color: #cddcf3; background: linear-gradient(180deg, rgba(30, 44, 72, 0.72), rgba(18, 26, 44, 0.78)); }
+.play-skill.silver { border-color: rgba(170, 178, 188, 0.55); color: #e2e6ec; background: linear-gradient(180deg, rgba(48, 52, 58, 0.72), rgba(28, 30, 34, 0.78)); }
 
 /* 武将牌上的附着牌（姜维的「明」） */
 .mark-chip {
@@ -1962,7 +2010,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       <div class="stage" id="stage">
         <div class="stage-emblem" id="stageEmblem">
           <span class="vtext">素心傲雪</span>
-          <small>点击手牌出牌 · 技能会自动询问</small>
+          <small>点击手牌出牌 · 主动技点上方的按钮</small>
         </div>
         <div class="stage-card-slot" id="stageCardSlot"></div>
         <div class="feed" id="feed"></div>
@@ -2016,6 +2064,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     </div>
 
     <div class="self-main">
+      <div class="play-skills" id="playSkills" hidden></div>
       <div class="skill-row" id="skillRow"></div>
       <div class="hand-wrap">
         <div class="hand" id="hand"></div>
@@ -2035,6 +2084,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           <button data-dbg="flip">银贞换面</button>
           <button data-dbg="charge">杜预蓄力 +2</button>
           <button data-dbg="record">记录改为【杀】</button>
+          <button data-dbg="duange">锻戈 +7（升一档）</button>
         </div>
         <p class="sandbox-note">只在你的出牌阶段可用，便于快速验证濒死 / 洁霜 / 阴阳转换 / 杜预蓄力。</p>
       </details>
@@ -5511,6 +5561,103 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       await this.draw(lu, given.length);
     }
 
+    /* ---------- 出牌阶段的「点击发动」技能 ---------- */
+
+    /** 仗八蛇矛：弃两张手牌当【杀】 */
+    async activateZhangba(p) {
+      const yes = await this.confirm(
+        p,
+        `【丈八蛇矛】弃两张手牌，视为使用一张【杀】？\n（手牌 ${p.hand.length} 张，本回合【杀】已用 ${this.ctx ? this.ctx.shaUsed : 0} 次）`,
+        '丈八·发动',
+        { hand: p.hand.length }
+      );
+      if (!yes) return;
+      const dropped = await this.discardFromHand(p, 2, '丈八·弃牌', '【丈八蛇矛】弃置第 1/2 张');
+      if (dropped < 2) return;
+      const foes = this.aliveOthers(p).filter((o) => this.distance(p, o) <= this.rangeOf(p));
+      if (!foes.length) {
+        this.pushLog('【丈八蛇矛】攻击范围内没有目标。', 'system');
+        return;
+      }
+      const t = foes.length === 1 ? foes[0] : await this.pickTarget(p, foes, '【丈八蛇矛】杀谁？', '丈八·目标');
+      if (!t) return;
+      this.virtSeq = (this.virtSeq || 0) + 1;
+      const v = {
+        id: 'virt-zhangba-' + this.virtSeq,
+        virtual: true,
+        name: 'sha',
+        label: '杀',
+        type: 'basic',
+        suit: '',
+        rank: '',
+        red: false,
+      };
+      this.pushLog(`【丈八蛇矛】${p.name} 弃两张牌视为使用【杀】。`, 'skill');
+      this.emit();
+      await this.useCard(p, v, [t.id]);
+    }
+
+    /** 当前出牌阶段可以点击发动的技能（给 UI 画按钮） */
+    playSkillOptions(p) {
+      const out = [];
+      if (!p || !p.alive) return out;
+      const s = p.skills;
+      const ctx = this.ctx;
+
+      if (s.jiufa && s.jiufa.armed) {
+        const x = Math.min(9, s.jiufa.uses + 1);
+        out.push({ key: 'jiufa', label: '九伐', note: `弃${x}张 · X=${x}`, tone: 'gold' });
+      }
+      if (s.shishou && !s.shishou.used && p.hand.length) {
+        const x = Math.min(9, s.jiufa ? s.jiufa.uses : 0);
+        out.push({ key: 'shishou', label: '誓守', note: `最多${x}张→明`, tone: 'violet' });
+      }
+      if (s.longling && s.longling.charge >= 1 && p.hand.length >= 2) {
+        out.push({ key: 'longling', label: '龙翎', note: `蓄力${s.longling.charge}`, tone: 'green' });
+      }
+      if (s.pengjiu && s.guixin && s.guixin.yi >= 2) {
+        out.push({ key: 'pengjiu', label: '烹酒', note: `疑${s.guixin.yi}`, tone: 'red' });
+      }
+      if (s.jicheng && s.jiangyi && s.jiangyi.tao >= 3) {
+        out.push({ key: 'jicheng', label: '稷成', note: `韬略${s.jiangyi.tao}`, tone: 'cyan' });
+      }
+      if (s.linmai && s.linmai.armed && p.hp >= 2) {
+        out.push({ key: 'linmai', label: '麟脉', note: '限定技', tone: 'gold' });
+      }
+      if (s.longlin && p.marks.lin.length) {
+        out.push({ key: 'useLin', label: '龙霖', note: `霖${p.marks.lin.length}`, tone: 'blue' });
+      }
+      if (s.sheji && p.hand.length >= Math.min(9, s.sheji.perTurn + 1)) {
+        const x = Math.min(9, s.sheji.perTurn + 1);
+        out.push({ key: 'sheji', label: '射戟', note: `弃${x}张`, tone: 'red' });
+      }
+      if (s.dubu && s.dubu.tier >= 3 && !p.flags.dubuAdjusted) {
+        out.push({ key: 'dubu', label: '独步', note: '调整手牌', tone: 'silver' });
+      }
+      if (this.weaponOf(p) === 'zhangba' && p.hand.length >= 2) {
+        out.push({ key: 'zhangba', label: '丈八蛇矛', note: '弃2当杀', tone: 'silver' });
+      }
+      return out;
+    }
+
+    /** 按 key 执行出牌阶段技能 */
+    async runPlaySkill(p, key) {
+      switch (key) {
+        case 'jiufa': return this.activateJiufa(p);
+        case 'shishou': return this.activateShishou(p);
+        case 'longling': return this.activateLongling(p);
+        case 'pengjiu': return this.activatePengjiu(p);
+        case 'jicheng': return this.activateJicheng(p);
+        case 'linmai': return this.activateLinmai(p);
+        case 'useLin': return this.useLin(p);
+        case 'sheji': return this.activateSheji(p);
+        case 'dubu': return this.activateDubu(p);
+        case 'zhangba': return this.activateZhangba(p);
+        default:
+          return null;
+      }
+    }
+
     async phasePlay(p) {
       if (this.ctx) {
         this.ctx.phase = 'play';
@@ -5519,74 +5666,28 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       }
       this.emit();
 
-      // 姜维：出牌阶段先问九伐（限定技），再问誓守（限一次）
-      if (p.skills.jiufa && p.skills.jiufa.armed) {
-        await this.activateJiufa(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.shishou && !p.skills.shishou.used && p.marks.ming && p.hand.length) {
-        await this.activateShishou(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.longling) {
-        await this.activateLongling(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.pengjiu) {
-        await this.activatePengjiu(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.jicheng && p.skills.jiangyi && p.skills.jiangyi.tao >= 3) {
-        await this.activateJicheng(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.linmai && p.skills.linmai.armed && p.hp >= 2) {
-        await this.activateLinmai(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.longlin && p.marks.lin.length) {
-        await this.useLin(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.sheji) {
-        await this.activateSheji(p);
-        if (this.over || !p.alive) return;
-      }
-      if (p.skills.dubu && p.skills.dubu.tier >= 3) {
-        await this.activateDubu(p);
-        if (this.over || !p.alive) return;
-      }
-      // 丈八蛇矛：手里没有【杀】时，问一次要不要弃两张牌当【杀】
-      if (this.weaponOf(p) === 'zhangba' && p.hand.length >= 2 && !p.hand.some((c) => c.name === 'sha')) {
-        const yes = await this.confirm(
-          p,
-          `【丈八蛇矛】弃两张手牌，视为使用一张【杀】？\n（手牌 ${p.hand.length} 张，本回合【杀】已用 ${this.ctx ? this.ctx.shaUsed : 0} 次）`,
-          '丈八·发动',
-          { hand: p.hand.length }
-        );
-        if (yes) {
-          const dropped = await this.discardFromHand(p, 2, '丈八·弃牌', '【丈八蛇矛】弃置第 1/2 张');
-          if (dropped >= 2) {
-            const foes = this.aliveOthers(p).filter((o) => this.distance(p, o) <= this.rangeOf(p));
-            const t = foes.length === 1 ? foes[0] : await this.pickTarget(p, foes, '【丈八蛇矛】杀谁？', '丈八·目标');
-            if (t) {
-              this.virtSeq = (this.virtSeq || 0) + 1;
-              const v = {
-                id: 'virt-zhangba-' + this.virtSeq,
-                virtual: true,
-                name: 'sha',
-                label: '杀',
-                type: 'basic',
-                suit: '',
-                rank: '',
-                red: false,
-              };
-              this.pushLog(`【丈八蛇矛】${p.name} 弃两张牌视为使用【杀】。`, 'skill');
-              this.emit();
-              await this.useCard(p, v, [t.id]);
-              if (this.over || !p.alive) return;
-            }
-          }
+      // 人类玩家：出牌阶段的主动技一律走「点击技能按钮」发动（见 ui.js 的出牌技能条）
+      // AI 没有按钮可点，所以这里替它自动询问一次。
+      if (p.isAI) {
+        const seq = [
+          [() => p.skills.jiufa && p.skills.jiufa.armed, () => this.activateJiufa(p)],
+          [() => p.skills.shishou && !p.skills.shishou.used && p.hand.length, () => this.activateShishou(p)],
+          [() => !!p.skills.longling, () => this.activateLongling(p)],
+          [() => !!p.skills.pengjiu, () => this.activatePengjiu(p)],
+          [() => p.skills.jicheng && p.skills.jiangyi && p.skills.jiangyi.tao >= 3, () => this.activateJicheng(p)],
+          [() => p.skills.linmai && p.skills.linmai.armed && p.hp >= 2, () => this.activateLinmai(p)],
+          [() => p.skills.longlin && p.marks.lin.length, () => this.useLin(p)],
+          [() => !!p.skills.sheji, () => this.activateSheji(p)],
+          [() => p.skills.dubu && p.skills.dubu.tier >= 3, () => this.activateDubu(p)],
+          [
+            () => this.weaponOf(p) === 'zhangba' && p.hand.length >= 2 && !p.hand.some((c) => c.name === 'sha'),
+            () => this.activateZhangba(p),
+          ],
+        ];
+        for (const [cond, run] of seq) {
+          if (!cond()) continue;
+          await run();
+          if (this.over || !p.alive) return;
         }
       }
 
@@ -5594,6 +5695,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         if (this.over || !p.alive) return;
         const action = await this.pickAction(p);
         if (!action || action.type === 'end') break;
+        // 点击技能按钮发动的主动技
+        if (action.type === 'skill') {
+          await this.runPlaySkill(p, action.key);
+          if (this.over || !p.alive) return;
+          continue;
+        }
         if (action.type !== 'card') continue;
 
         const card = this.handCard(p, action.cardId);
@@ -6367,6 +6474,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     hand: $('#hand'),
     handEmpty: $('#handEmpty'),
     btnEnd: $('#btnEnd'),
+    playSkills: $('#playSkills'),
     turnHint: $('#turnHint'),
     sandbox: $('.sandbox'),
 
@@ -6387,6 +6495,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     mode: 'idle',
     ask: null,
     playResolve: null,
+    playSkillSig: null,
     pending: null,
     pendingTargets: null,
     lastHandSig: '',
@@ -7710,11 +7819,54 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     if (state.mode === 'play' && state.playResolve) finishAction({ type: 'end' });
   });
 
+  /* 出牌阶段：可点击发动的主动技 */
+  function renderPlaySkills() {
+    if (!el.playSkills) return;
+    const E = state.E;
+    const active = state.mode === 'play' && !!state.playResolve;
+    if (!E || !active) {
+      el.playSkills.hidden = true;
+      el.playSkills.innerHTML = '';
+      return;
+    }
+    const lu = E.players[0];
+    const opts = E.playSkillOptions ? E.playSkillOptions(lu) : [];
+    if (!opts.length) {
+      el.playSkills.hidden = true;
+      el.playSkills.innerHTML = '';
+      return;
+    }
+    const sig = opts.map((o) => o.key + o.note).join('|');
+    if (sig === state.playSkillSig && !el.playSkills.hidden) return;
+    state.playSkillSig = sig;
+    el.playSkills.hidden = false;
+    el.playSkills.innerHTML =
+      '<span class="play-skills-label">可发动</span>' +
+      opts
+        .map(
+          (o) =>
+            `<button type="button" class="play-skill ${o.tone || ''}" data-skill="${o.key}">` +
+            `${o.label}${o.note ? `<i>${o.note}</i>` : ''}</button>`
+        )
+        .join('');
+  }
+
+  if (el.playSkills) {
+    el.playSkills.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-skill]');
+      if (!b) return;
+      if (state.mode !== 'play' || !state.playResolve) return;
+      state.playSkillSig = null;
+      finishAction({ type: 'skill', key: b.dataset.skill });
+    });
+  }
+
   function updateEndButton() {
     const active = !!state.playResolve;
     el.btnEnd.disabled = !active;
     const cur = state.E ? state.E.get(state.E.currentPlayerId) : null;
     el.turnHint.textContent = active ? '你的出牌阶段' : cur ? `${cur.name} 的回合` : '等待中';
+    renderPlaySkills();
   }
 
   /* ------------------------------ 舞台 / 日志 ------------------------------ */
@@ -7949,6 +8101,17 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       }
       lu.flags.record = 'sha';
       E.pushLog('【试炼台】「记录」改为【杀】', 'system');
+    } else if (act === 'duange') {
+      if (!lu.skills.duange || !lu.skills.longling) {
+        toast('当前武将没有【锻戈】');
+        return;
+      }
+      lu.skills.longling.charge = lu.skills.longling.max;
+      E.llSpend(lu, lu.skills.longling.max);
+      E.pushLog(
+        `【试炼台】锻戈 +7（累计消耗 ${lu.skills.longling.spent} 点，第 ${lu.skills.duange.tier}/3 档）`,
+        'system'
+      );
     }
     E.emit();
   });
@@ -8216,6 +8379,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
       <h3>操作</h3>
       <p>· 出牌阶段点击手牌即可使用；需要目标的牌（杀 / 决斗 / 拆 / 顺）会自动指定对手（1v1 只有一个目标）。<br>
+         · 出牌阶段的<b>主动技</b>会显示成手牌上方的一排按钮（如九伐 / 烹酒 / 射戟 / 麟脉），点一下就发动。<br>
          · 技能触发时，牌桌下方会弹出提示条，点按钮决定是否发动。<br>
          · 响应阶段（如打【闪】）会高亮可用的手牌，点击即可打出，也可以点「放弃」。<br>
          · 右侧「技能」页可随时查看完整描述与当前状态。<br>
