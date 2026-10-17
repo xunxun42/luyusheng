@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 17:32 · 8e61c6d">
+<meta name="x-build" content="2026-10-17 17:46 · 43b89bb">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -404,13 +404,64 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
 .stage-card-slot { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 
+/* 牌桌中央：左「使用」+ 右「打出」（响应牌） */
 .stage-played {
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 24px;
   animation: pop .35s cubic-bezier(.2, 1.4, .4, 1);
 }
 
-.stage-played .who { font-size: 11.5px; letter-spacing: 2px; color: var(--muted); }
+.play-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.stage-played .who { font-size: 11.5px; letter-spacing: 2px; color: var(--muted); white-space: nowrap; }
 .stage-played .who b { color: var(--gold-2); font-weight: 500; }
+
+/* 响应牌：比「使用」的牌小一号，红调标题，从右侧滑入 */
+.play-col.resp-col { animation: respIn .34s cubic-bezier(.2, 1.3, .4, 1); }
+.play-col.resp-col .who b { color: #f0b3a8; }
+
+.resp-note {
+  margin-left: 5px;
+  padding: 0 6px;
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  color: var(--gold-2);
+  border: 1px solid rgba(216, 180, 106, 0.4);
+  border-radius: 999px;
+}
+
+/* 八卦阵等「视为打出」的虚拟牌 */
+.card.virtual { border-style: dashed; opacity: .92; }
+
+.stage-outcome {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  color: var(--gold-2);
+  border: 1px solid rgba(216, 180, 106, 0.45);
+  background: rgba(216, 180, 106, 0.1);
+}
+.stage-outcome.danger {
+  color: #f0b3a8;
+  border-color: rgba(215, 106, 95, 0.5);
+  background: rgba(215, 106, 95, 0.12);
+}
+
+@keyframes respIn {
+  from { opacity: 0; transform: translateX(26px) scale(.92); }
+  to { opacity: 1; transform: none; }
+}
 
 @keyframes pop {
   0% { transform: translateY(18px) scale(.86) rotate(-4deg); opacity: 0; }
@@ -418,23 +469,91 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 }
 
 .banner {
-  position: absolute;
-  top: 18px; left: 50%;
-  transform: translateX(-50%) translateY(-10px);
-  padding: 8px 18px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  letter-spacing: 1px;
-  color: #1a1206;
-  background: linear-gradient(180deg, var(--gold-2), var(--gold));
-  box-shadow: 0 6px 22px rgba(216, 180, 106, 0.3);
-  opacity: 0;
-  transition: opacity .25s, transform .25s;
-  pointer-events: none;
-  max-width: 90%;
-  text-align: center;
+  display: none;
 }
-.banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 播报区：出牌 / 响应 / 技能 / 转回合，统一在这个队列里滚，不再用单一 banner */
+.feed {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(94%, 620px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  z-index: 7;
+}
+
+.feed-item {
+  max-width: 100%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--gold-2);
+  background: rgba(10, 21, 16, 0.94);
+  border: 1px solid rgba(216, 180, 106, 0.38);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  animation: feedIn .22s ease;
+  transition: opacity .3s, transform .3s;
+}
+
+.feed-item.response {
+  color: #f0b3a8;
+  border-color: rgba(215, 106, 95, 0.48);
+  background: rgba(26, 12, 10, 0.94);
+}
+
+.feed-item.skill {
+  color: #9fe3bd;
+  border-color: rgba(127, 214, 164, 0.45);
+  background: rgba(10, 26, 20, 0.94);
+}
+
+/* 转回合：最醒目的一档 */
+.feed-item.turn {
+  padding: 7px 20px;
+  font-size: 12.5px;
+  letter-spacing: 2px;
+  color: #f4ecd8;
+  border-color: rgba(216, 180, 106, 0.75);
+  background: linear-gradient(180deg, rgba(48, 84, 66, 0.96), rgba(10, 21, 16, 0.96));
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(216, 180, 106, 0.15);
+}
+
+.feed-item.out { opacity: 0; transform: translateY(-8px); }
+
+@keyframes feedIn {
+  from { opacity: 0; transform: translateY(-10px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 顶栏阶段指示：把「素心傲雪」换成当前回合阶段 */
+.phase-owner {
+  margin-left: 7px;
+  padding: 1px 7px;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: var(--jade-2);
+  border: 1px solid rgba(127, 214, 164, 0.42);
+  border-radius: 999px;
+  background: rgba(63, 143, 107, 0.16);
+}
+.phase-owner.foe {
+  color: #f0b3a8;
+  border-color: rgba(215, 106, 95, 0.46);
+  background: rgba(215, 106, 95, 0.13);
+}
 
 /* ------------------------------- 提示条 ------------------------------- */
 
@@ -1381,6 +1500,19 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   .card.lg .cname { font-size: 27px; top: 42px; }
   .card.lg .cname.small { font-size: 16px; top: 36px; }
 
+  /* 使用 / 响应两张牌并排时收窄间距，响应牌再小一点 */
+  .stage-played { gap: 12px; }
+  .play-col { gap: 7px; }
+  .stage-played .who { font-size: 10.5px; letter-spacing: 1px; }
+  .play-col.resp-col .card { width: 68px; height: 95px; }
+  .play-col.resp-col .card .cname { font-size: 19px; top: 26px; }
+  .play-col.resp-col .card .cname.small { font-size: 12px; top: 25px; }
+  .play-col.resp-col .card .corner { top: 4px; left: 5px; font-size: 9px; }
+  .play-col.resp-col .card .corner .c-suit { font-size: 10.5px; }
+  .play-col.resp-col .card .ctype { bottom: 4px; font-size: 8px; }
+  .resp-note { font-size: 9px; padding: 0 5px; margin-left: 4px; }
+  .stage-outcome { font-size: 9.5px; padding: 2px 7px; }
+
   /* 侧栏 → 右侧抽屉 */
   .sidepanel {
     position: fixed;
@@ -1617,7 +1749,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           <small>点击手牌出牌 · 技能会自动询问</small>
         </div>
         <div class="stage-card-slot" id="stageCardSlot"></div>
-        <div class="banner" id="banner"></div>
+        <div class="feed" id="feed"></div>
       </div>
 
       <div class="prompt" id="prompt" hidden>
@@ -2064,6 +2196,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.log = [];
       this.listeners = [];
       this.lastPlay = null;
+      // 最近一次「响应打出」（闪 / 杀 / 桃），供 UI 在牌桌上显示，不再只躺在战斗记录里
+      // { byId, card, need, asLabel, virtual, note, canceled }
+      this.lastResponse = null;
 
       this.turnIndex = 0;
       this.round = 1;
@@ -2350,6 +2485,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         p.equips[slot] = card;
         this.pushLog(`${p.name} 装备【${card.label}】`, 'action');
         this.lastPlay = { card, by: p.id, targets: [] };
+        this.lastResponse = null;
         this.emit();
         await this.pace();
         return;
@@ -2365,10 +2501,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       let label = card.label;
       if (asSha && card.name !== 'sha') label = `${card.label}（当杀）`;
       this.pushLog(
-        `${p.name} 使用【${label}】${targets.length ? ' → ' + targets.map((t) => t.name).join('、') : ''}`,
+        `${p.name} 使用【${label}】${card.suit}${card.rank}` +
+          (targets.length ? ' → ' + targets.map((t) => t.name).join('、') : ''),
         'play'
       );
       this.lastPlay = { card, by: p.id, targets: targets.map((t) => t.id) };
+      this.lastResponse = null;
       this.emit();
       await this.pace();
 
@@ -2393,6 +2531,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             await this.damage({ sourceId: p.id, targetId: t.id, amount: dmg, cause: dmg > 1 ? '酒杀' : '杀' });
           } else {
             this.pushLog(`${t.name} 抵消了【杀】`, 'system');
+            if (this.lastResponse) this.lastResponse.canceled = true;
+            this.emit();
           }
         }
       } else {
@@ -2605,6 +2745,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           this.stats.bagua++;
           if (j && j.red) {
             this.pushLog(`${p.name} 的【八卦阵】判定成功，视为打出【闪】`, 'skill');
+            this.lastResponse = {
+              byId: p.id,
+              card: null,
+              virtual: '闪',
+              need: 'shan',
+              asLabel: '闪',
+              note: '八卦阵',
+              canceled: false,
+            };
             this.emit();
             return true;
           }
@@ -2617,6 +2766,19 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         if (!c) return false;
         this.toDiscard(c, p, false);
         this.pushLog(`${p.name} 打出【${c.label}】${c.suit}${c.rank}`, 'response');
+
+        // 转换技要标出来：龙胆把杀当闪、武圣把红牌当杀，光看牌面容易误判
+        const asLabel = c.name !== need ? `${c.label}（当${needLabel}）` : c.label;
+        this.lastResponse = {
+          byId: p.id,
+          card: c,
+          need,
+          asLabel,
+          virtual: null,
+          note: '',
+          canceled: false,
+        };
+
         this.emit();
         await this.pace();
         return true;
@@ -2976,6 +3138,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         jieshuangTarget: null,
       };
       p.flags.jiuBonus = false;
+      this.lastResponse = null; // 新回合清掉上一回合的响应牌，避免误解成这一回合的
       this.pushLog(`── ${this.round} 轮 · ${p.name} 的回合 ──`, 'turn');
       this.emit();
 
@@ -3357,7 +3520,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     stage: $('#stage'),
     stageEmblem: $('#stageEmblem'),
     stageCardSlot: $('#stageCardSlot'),
-    banner: $('#banner'),
+    feed: $('#feed'),
 
     prompt: $('#prompt'),
     promptTag: $('#promptTag'),
@@ -3401,7 +3564,6 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     lastPlayKey: '',
     hpSeen: {},
     over: false,
-    bannerTimer: 0,
     toastTimer: 0,
     tab: 'skills',
     skillSig: '',
@@ -3442,8 +3604,26 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     if (!g) return;
     el.brandGlyph.textContent = g.name[0];
     el.brandTitle.textContent = `${g.title} · ${g.name}`;
-    el.brandSub.textContent =
-      '技能：' + g.skills.map((k) => (SKILL_INFO[k] ? SKILL_INFO[k].name : k)).join(' / ');
+    el.brandSub.textContent = `${g.title} · ${g.name}（${g.kingdom}）`;
+  }
+
+  /* 顶栏标题改成「当前阶段」，不再固定显示武将称号 */
+  const PHASE_LABEL = {
+    start: '回合开始时',
+    draw: '摸牌阶段',
+    play: '出牌阶段',
+    discard: '弃牌阶段',
+    end: '结束阶段',
+  };
+
+  function renderPhase(E) {
+    if (!el.brandTitle) return;
+    const owner = E.get(E.currentPlayerId);
+    const label = PHASE_LABEL[E.ctx && E.ctx.phase] || '准备中';
+    const mine = !!owner && owner.id === 'p0';
+    const who = mine ? '你' : owner ? owner.name : '';
+    el.brandTitle.innerHTML =
+      `${label}<span class="phase-owner${mine ? '' : ' foe'}">${who}</span>`;
   }
 
   /* ------------------------------ 选将 ------------------------------ */
@@ -3525,7 +3705,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     el.logList.innerHTML = '';
     el.stageCardSlot.innerHTML = '';
     el.stageEmblem.style.opacity = '1';
-    el.banner.classList.remove('show');
+    el.feed.innerHTML = '';
     el.prompt.hidden = true;
 
     const E = new Engine({
@@ -3609,6 +3789,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     el.hudTurn.textContent = E.currentPlayerId === 'p0' ? '你的回合' : E.currentPlayerId ? foe.name + ' 回合' : '—';
     el.hudMode.textContent = state.watch ? '观战' : '对战';
 
+    renderPhase(E);
     renderEnemy(E, lu, foe);
     renderSelf(E, lu);
     renderSkills(E, lu);
@@ -4091,23 +4272,99 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
   /* ------------------------------ 舞台 / 日志 ------------------------------ */
 
+  /* 牌桌：左边「使用」的牌，右边「打出」的响应牌（闪 / 杀 / 桃 / 八卦阵）
+     响应牌以前只写进战斗记录，玩家看不到对方到底打了什么，影响判断。 */
   function renderStage(E) {
     const play = E.lastPlay;
-    if (!play) return;
-    const key = play.card.id + ':' + play.by + ':' + E.log.length;
-    if (key === state.lastPlayKey) return;
-    state.lastPlayKey = key;
+    const resp = E.lastResponse;
+    if (!play && !resp) return;
 
-    const wrap = document.createElement('div');
-    wrap.className = 'stage-played';
-    const who = document.createElement('div');
-    who.className = 'who';
-    who.innerHTML = `<b>${E.get(play.by).name}</b> 使用`;
-    wrap.appendChild(who);
-    wrap.appendChild(cardNode(play.card, true));
-    el.stageEmblem.style.opacity = '0';
-    el.stageCardSlot.innerHTML = '';
-    el.stageCardSlot.appendChild(wrap);
+    const playKey = play ? play.card.id + ':' + play.by : '';
+    const respKey = resp ? (resp.card ? resp.card.id : 'v:' + resp.virtual) + ':' + resp.byId : '';
+    const key = playKey + '|' + respKey;
+
+    if (key !== state.lastPlayKey) {
+      state.lastPlayKey = key;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'stage-played';
+
+      if (play) {
+        const col = document.createElement('div');
+        col.className = 'play-col';
+        const who = document.createElement('div');
+        who.className = 'who';
+        who.innerHTML = `<b>${E.get(play.by).name}</b> 使用`;
+        col.appendChild(who);
+        col.appendChild(cardNode(play.card, true));
+        wrap.appendChild(col);
+      }
+
+      if (resp) {
+        const col = document.createElement('div');
+        col.className = 'play-col resp-col';
+
+        const who = document.createElement('div');
+        who.className = 'who';
+        who.innerHTML =
+          `<b>${E.get(resp.byId).name}</b> 打出` +
+          (resp.note ? `<span class="resp-note">${resp.note}</span>` : '');
+        col.appendChild(who);
+
+        const card = resp.card || {
+          id: 'virtual-' + (resp.virtual || 'shan'),
+          label: resp.virtual || '闪',
+          suit: '',
+          rank: '',
+          type: 'basic',
+          red: false,
+          name: resp.need || 'shan',
+        };
+        const node = cardNode(card);
+        if (!resp.card) node.classList.add('virtual');
+        col.appendChild(node);
+
+        const out = document.createElement('div');
+        out.className = 'stage-outcome';
+        out.id = 'stageOutcome';
+        out.hidden = true;
+        col.appendChild(out);
+
+        wrap.appendChild(col);
+      }
+
+      el.stageEmblem.style.opacity = '0';
+      el.stageCardSlot.innerHTML = '';
+      el.stageCardSlot.appendChild(wrap);
+    }
+
+    updateStageOutcome(E);
+  }
+
+  /* 响应结果（被抵消 / 转换技「当作闪」）单独更新，避免重建卡片打断动画 */
+  function updateStageOutcome(E) {
+    const out = document.querySelector('#stageOutcome');
+    if (!out) return;
+    const r = E.lastResponse;
+    if (!r) {
+      out.hidden = true;
+      return;
+    }
+    const needLabel = r.need === 'shan' ? '闪' : r.need === 'sha' ? '杀' : '桃';
+    const converted = !!(r.card && r.card.name !== r.need);
+
+    if (r.canceled) {
+      const what = E.lastPlay ? E.lastPlay.card.label : '牌';
+      out.textContent = `【${what}】被抵消`;
+      out.className = 'stage-outcome danger';
+      out.hidden = false;
+    } else if (converted) {
+      out.textContent = `当作【${needLabel}】`;
+      out.className = 'stage-outcome';
+      out.hidden = false;
+    } else {
+      out.hidden = true;
+    }
   }
 
   function renderLog(E) {
@@ -4120,7 +4377,19 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       li.textContent = e.text;
       el.logList.appendChild(li);
       appended++;
-      if (e.kind === 'skill' && /【(银贞|洁霜|瑶心)】/.test(e.text)) showBanner(e.text);
+
+      // 同步到牌桌播报：谁用了什么、谁打了什么、转回合
+      if (e.kind === 'play') {
+        feedPush(e.text, 'play');
+      } else if (e.kind === 'response') {
+        feedPush(e.text, 'response');
+      } else if (e.kind === 'turn') {
+        const owner = E.get(E.currentPlayerId);
+        const who = !owner ? '' : owner.id === 'p0' ? '你的回合' : `${owner.name} 的回合`;
+        feedPush(`第 ${E.round} 轮 · ${who}`, 'turn');
+      } else if (e.kind === 'skill' && /【(银贞|洁霜|瑶心)】/.test(e.text)) {
+        feedPush(e.text, 'skill');
+      }
     }
     state.logShown = E.log.length;
     while (el.logList.children.length > 240) el.logList.removeChild(el.logList.firstChild);
@@ -4131,11 +4400,22 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     }
   }
 
-  function showBanner(text) {
-    el.banner.textContent = text.length > 46 ? text.slice(0, 46) + '…' : text;
-    el.banner.classList.add('show');
-    clearTimeout(state.bannerTimer);
-    state.bannerTimer = setTimeout(() => el.banner.classList.remove('show'), 1500);
+  /* 播报队列：出牌 / 响应 / 技能 / 转回合都走这里，最多同时挂 3 条 */
+  const FEED_MAX = 3;
+
+  function feedPush(text, kind) {
+    if (!el.feed || !text) return;
+    const item = document.createElement('div');
+    item.className = 'feed-item' + (kind ? ' ' + kind : '');
+    item.textContent = text;
+    el.feed.appendChild(item);
+    while (el.feed.children.length > FEED_MAX) el.feed.removeChild(el.feed.firstChild);
+
+    const life = kind === 'turn' ? 3200 : kind === 'skill' ? 2800 : 2400;
+    setTimeout(() => {
+      item.classList.add('out');
+      setTimeout(() => item.remove(), 320);
+    }, life);
   }
 
   function checkHpFloats(E) {
