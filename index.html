@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 19:20 · 75cd27d">
+<meta name="x-build" content="2026-10-17 19:26 · 060e7d9">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2342,6 +2342,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       maxHp: 4,
       skills: ['guixin', 'pengjiu', 'zhulu', 'xiaoxiong'],
     },
+    lukang: {
+      key: 'lukang',
+      name: '陆抗',
+      kingdom: '吴',
+      title: '末越之孤',
+      maxHp: 4,
+      skills: ['jiangyi', 'jicheng', 'chizhong', 'juejin'],
+    },
   };
 
   /* 牌名 → 牌面文字，用于「记录」选择与日志 */
@@ -2578,6 +2586,46 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         '你造成伤害时可触发「受到伤害时」的效果，' +
         '你的伤害视为无来源伤害（依赖伤害来源的效果不生效）。',
     },
+    jiangyi: {
+      name: '江翊',
+      kind: '蓄力技',
+      tagline: '攒「韬略」，每个结束阶段自己发五谷',
+      when: '你失去牌 / 成为他人用牌的目标 / 每个角色的结束阶段',
+      text:
+        '当你失去牌或成为其他角色使用牌的目标时，你获得1点「韬略」（上限8）。\n' +
+        '每个角色的结束阶段，你可以消耗2点「韬略」，视为使用一张【五谷丰登】，' +
+        '并从中选择X张牌任意分配给任意角色（X为你的体力值），' +
+        '然后将剩余的牌按任意顺序置于牌堆顶。',
+    },
+    jicheng: {
+      name: '稷成',
+      kind: '主动技',
+      tagline: '三条路，背水全吃',
+      when: '出牌阶段，消耗3点「韬略」',
+      text:
+        '消耗3点「韬略」，选择一项：\n' +
+        '1. 选择一名其他角色，直到其结束阶段，所有人与该角色的距离+1。\n' +
+        '2. 选择一名其他角色，其跳过下个摸牌阶段。\n' +
+        '3. 背水：你摸两张牌，然后弃置三张牌并失去1点体力。（背水：执行以上所有选项）',
+    },
+    chizhong: {
+      name: '持重',
+      kind: '锁定技',
+      tagline: '伤害恒为1，横置与延时锦囊都免疫',
+      when: '常时',
+      text:
+        '你不能被横置，你不能成为延时锦囊牌的目标。\n' +
+        '你受到的伤害始终为1（超出或不足 1 的都修正为 1）。',
+    },
+    juejin: {
+      name: '爝烬',
+      kind: '限定技',
+      tagline: '濒死时点名保护一个人',
+      when: '你进入濒死状态时',
+      text:
+        '当你进入濒死状态时，你可以选择一名其他角色。' +
+        '若如此做，其余角色的下6张牌不能以其为目标。',
+    },
     paoxiao: {
       name: '咆哮',
       kind: '锁定技',
@@ -2664,6 +2712,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (key === 'pengjiu') p.skills.pengjiu = { passive: true };
       if (key === 'zhulu') p.skills.zhulu = { passive: true };
       if (key === 'xiaoxiong') p.skills.xiaoxiong = { passive: true };
+      if (key === 'jiangyi') p.skills.jiangyi = { tao: 0, max: 8 };
+      if (key === 'jicheng') p.skills.jicheng = { passive: true };
+      if (key === 'chizhong') p.skills.chizhong = { passive: true };
+      if (key === 'juejin') p.skills.juejin = { used: false };
     });
     p.flags.record = null; // 军势「记录」的牌名
     // 武将牌上的附着牌（姜维的「明」；后续诸葛亮的星、赵云的霖也放这里）
@@ -2779,7 +2831,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       const seat = n <= 2 ? 1 : Math.min(raw, n - raw);
       const plus = b.equips.horsePlus ? 1 : 0;
       const minus = a.equips.horseMinus ? 1 : 0;
-      return Math.max(1, seat + plus - minus);
+      // 稷成：所有人与被标记角色的距离 +1
+      const aura = b.flags && b.flags.auraPlus ? b.flags.auraPlus : 0;
+      return Math.max(1, seat + plus + aura - minus);
     }
 
     /** 是否同一阵营（AI 判断敌我用；1v1 与身份局里「内奸」不算任何人的队友） */
@@ -2815,6 +2869,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (i < 0) return null;
       const c = p.hand.splice(i, 1)[0];
       this.gainCharge(p, 1); // 军势：失去牌获得蓄力点
+      this.yingGain(p, 1); // 江翊：失去牌获得「韬略」
       return c;
     }
 
@@ -3605,6 +3660,177 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.emit();
     }
 
+    /* ------------------- 陆抗：江翊 / 稷成 / 持重 / 爝烬 ------------------- */
+
+    yingGain(p, n) {
+      if (!p || !p.alive || !p.skills.jiangyi) return;
+      const s = p.skills.jiangyi;
+      s.tao = Math.min(s.max, s.tao + (n || 1));
+    }
+
+    yingSpend(p, n) {
+      const s = p.skills.jiangyi;
+      if (!s || s.tao < n) return false;
+      s.tao -= n;
+      return true;
+    }
+
+    /** 从一堆亮出的牌里挑一张（江翊的分配） */
+    async pickFromPool(p, pool, text) {
+      if (!pool.length) return null;
+      if (p.isAI) {
+        const id = this.aiPickWugu(p, pool);
+        return pool.find((c) => c.id === id) || pool[0];
+      }
+      const id = await this.ask(p, {
+        kind: 'confirm',
+        tag: '江翊·选牌',
+        text,
+        options: pool.map((c) => ({ label: `【${c.label}】${c.suit}${c.rank}`, value: c.id })),
+        cancel: true,
+        cancelLabel: '不选了',
+      });
+      if (!id) return null;
+      return pool.find((c) => c.id === id) || null;
+    }
+
+    /** 余牌按「从牌堆顶往下」的顺序逐个点选 */
+    async arrangeTop(p, pool) {
+      const rest = pool.slice();
+      const order = [];
+      while (rest.length) {
+        if (p.isAI || rest.length === 1) {
+          order.push(rest.shift());
+          continue;
+        }
+        const id = await this.ask(p, {
+          kind: 'confirm',
+          tag: '江翊·排序',
+          text: `剩余牌按「从牌堆顶往下」逐个点选（还剩 ${rest.length} 张）`,
+          options: rest.map((c) => ({ label: `【${c.label}】${c.suit}${c.rank}`, value: c.id })),
+          cancel: false,
+        });
+        const idx = rest.findIndex((c) => c.id === id);
+        if (idx < 0) {
+          order.push(rest.shift());
+          continue;
+        }
+        order.push(rest.splice(idx, 1)[0]);
+      }
+      return order;
+    }
+
+    /** 江翊：每个角色的结束阶段，消耗 2 点「韬略」自己发一次五谷 */
+    async tryJiangyiEnd(lk) {
+      const s = lk.skills.jiangyi;
+      if (!s || s.tao < 2 || !lk.alive || this.over) return;
+
+      const yes = await this.confirm(
+        lk,
+        `【江翊】消耗2点「韬略」，视为使用【五谷丰登】并自行分配？\n` +
+          `（韬略 ${s.tao}/${s.max}，你的体力 ${lk.hp} → 可分配 ${lk.hp} 张）`,
+        '江翊',
+        { tao: s.tao }
+      );
+      if (!yes) return;
+      this.yingSpend(lk, 2);
+
+      const alive = this.alivePlayers();
+      const pool = [];
+      for (let i = 0; i < alive.length; i++) {
+        const c = this.popDeck();
+        if (c) pool.push(c);
+      }
+      this.pushLog(
+        `【江翊】亮出 ${pool.length} 张：${pool.map((c) => `【${c.label}】`).join('')}`,
+        'skill'
+      );
+      this.emit();
+
+      const x = Math.min(lk.hp, pool.length);
+      for (let i = 0; i < x && pool.length; i++) {
+        const card = await this.pickFromPool(lk, pool, `【江翊】选择第 ${i + 1}/${x} 张`);
+        if (!card) break;
+        pool.splice(pool.indexOf(card), 1);
+        let to = lk;
+        if (alive.length > 1) {
+          to = (await this.pickTarget(lk, alive, `把【${card.label}】给谁？`, '江翊·分配')) || lk;
+        }
+        to.hand.push(card);
+        this.pushLog(`【江翊】${lk.name} 把【${card.label}】给了 ${to.name}。`, 'skill');
+        this.emit();
+        await this.pace();
+      }
+
+      if (pool.length) {
+        const order = await this.arrangeTop(lk, pool);
+        for (let i = order.length - 1; i >= 0; i--) this.deck.push(order[i]);
+        this.pushLog(`【江翊】剩余 ${order.length} 张按顺序置于牌堆顶。`, 'skill');
+        this.emit();
+      }
+    }
+
+    /** 稷成：消耗 3 点「韬略」，三选一（背水 = 全做） */
+    async activateJicheng(p) {
+      const s = p.skills.jiangyi;
+      if (!p.skills.jicheng || !s || s.tao < 3 || !p.alive || this.over) return;
+      const others = this.aliveOthers(p);
+      if (!others.length) return;
+
+      const yes = await this.confirm(
+        p,
+        `【稷成】消耗3点「韬略」，选择一项：\n` +
+          `① 一名其他角色到其结束阶段，所有人与他距离+1\n` +
+          `② 一名其他角色跳过下个摸牌阶段\n` +
+          `③ 背水：摸2张，然后弃3张并失去1点体力（=执行以上全部）\n` +
+          `（韬略 ${s.tao}/${s.max}）`,
+        '稷成·发动',
+        { tao: s.tao }
+      );
+      if (!yes) return;
+
+      const opt = await this.ask(p, {
+        kind: 'confirm',
+        tag: '稷成·选项',
+        text: '选择哪一项？',
+        options: [
+          { label: '① 距离 +1', value: 1 },
+          { label: '② 跳过下个摸牌阶段', value: 2 },
+          { label: '③ 背水（全部执行）', value: 3 },
+        ],
+        cancel: true,
+        cancelLabel: '取消',
+      });
+      if (!opt) return;
+
+      this.yingSpend(p, 3);
+
+      if (opt === 3) {
+        await this.draw(p, 2);
+        const dropped = await this.discardFromHand(p, 3, '稷成·弃牌', '【背水】弃置第 1/3 张');
+        this.pushLog(`【背水】${p.name} 摸2张、弃 ${dropped} 张`, 'skill');
+        await this.loseHp(p, 1, '背水');
+        if (!p.alive || this.over) return;
+      }
+
+      if (opt === 1 || opt === 3) {
+        const t1 = await this.pickTarget(p, others, '【稷成①】选择一名其他角色（与其距离+1）', '稷成·目标1');
+        if (t1) {
+          t1.flags.auraPlus = 1;
+          this.pushLog(`【稷成】直到 ${t1.name} 的结束阶段，所有人与他的距离 +1。`, 'skill');
+          this.emit();
+        }
+      }
+      if (opt === 2 || opt === 3) {
+        const t2 = await this.pickTarget(p, others, '【稷成②】选择一名角色跳过下个摸牌阶段', '稷成·目标2');
+        if (t2) {
+          t2.flags.skipDraw = (t2.flags.skipDraw || 0) + 1;
+          this.pushLog(`【稷成】${t2.name} 将跳过下个摸牌阶段。`, 'skill');
+          this.emit();
+        }
+      }
+    }
+
     /* ------------------------------ 摸牌 ------------------------------ */
 
     reshuffle() {
@@ -3833,8 +4059,27 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.lastResponse = null;
       // 龙翎：对其他角色使用牌 → 蓄力点 +1
       if (targets.some((t) => t && t !== p)) this.llGain(p, 1);
+      // 江翊：成为其他角色使用牌的目标 → 韬略 +1
+      for (const t of targets) {
+        if (t && t !== p) this.yingGain(t, 1);
+      }
       this.emit();
       await this.pace();
+
+      // 江翊 / 爝烬 / 秉成：目标限制
+      if (this.tingeJin && this.tingeJin.remain > 0 && p.id !== this.tingeJin.protectId) {
+        const before = targets.length;
+        targets = targets.filter((t) => t.id !== this.tingeJin.protectId);
+        if (before !== targets.length) {
+          this.pushLog(`【爝烬】${p.name} 的牌不能以该角色为目标。`, 'skill');
+        }
+        this.tingeJin.remain--;
+        if (this.tingeJin.remain <= 0) {
+          this.tingeJin = null;
+          this.pushLog('【爝烬】保护效果结束。', 'system');
+        }
+        this.emit();
+      }
 
       // 武库：其他角色用到与杜预「记录」同名的牌时可以反制（可能把杜预从目标里摘掉）
       targets = await this.tryWuku(p, card, targets);
@@ -4415,6 +4660,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       // 白银狮子：受到的伤害最多为 1
       if (this.armorOf(t) === 'baiyin' && amount > 1) amount = 1;
 
+      // 持重：受到的伤害始终为 1（超出或不足 1 的都修正为 1）
+      if (t.skills.chizhong && amount > 0) amount = 1;
+
       const hpBefore = t.hp;
       t.hp -= amount;
       t.stats.damageTaken += amount;
@@ -4570,6 +4818,32 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         }
 
         while (p.alive && p.hp <= 0) {
+          // 爝烬：濒死时的限定技，点名保护一名其他角色
+          if (p.skills.juejin && !p.skills.juejin.used) {
+            const yes = await this.confirm(
+              p,
+              '【爝烬】限定技：你现在进入濒死状态。\n是否发动？选择一名其他角色，其余角色接下来的 6 张牌不能以其为目标。',
+              '爝烬'
+            );
+            if (yes) {
+              const t = await this.pickTarget(
+                p,
+                this.aliveOthers(p),
+                '【爝烬】选择要保护的角色',
+                '爝烬·目标'
+              );
+              if (t) {
+                p.skills.juejin.used = true;
+                this.tingeJin = { protectId: t.id, remain: 6 };
+                this.pushLog(
+                  `【爝烬】${p.name} 令其余角色接下来的 6 张牌不能以 ${t.name} 为目标。`,
+                  'skill'
+                );
+                this.emit();
+                await this.pace();
+              }
+            }
+          }
           // 勤君：赵云（或任意持勤君者）可以代打【桃】
           if (await this.tryQinjun(p, 'tao')) {
             p.hp += 1;
@@ -4752,6 +5026,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         await this.activatePengjiu(p);
         if (this.over || !p.alive) return;
       }
+      if (p.skills.jicheng && p.skills.jiangyi && p.skills.jiangyi.tao >= 3) {
+        await this.activateJicheng(p);
+        if (this.over || !p.alive) return;
+      }
       // 丈八蛇矛：手里没有【杀】时，问一次要不要弃两张牌当【杀】
       if (this.weaponOf(p) === 'zhangba' && p.hand.length >= 2 && !p.hand.some((c) => c.name === 'sha')) {
         const yes = await this.confirm(
@@ -4850,6 +5128,19 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         this.emit();
       }
 
+      // 稷成的距离光环：到该角色结束阶段失效
+      if (p.flags && p.flags.auraPlus) {
+        p.flags.auraPlus = 0;
+        this.pushLog(`【稷成】${p.name} 的距离 +1 效果结束。`, 'system');
+        this.emit();
+      }
+
+      // 江翊：每个角色的结束阶段，陆抗都可以发一次五谷
+      const lkAng = this.players.find(
+        (x) => x.alive && x.skills.jiangyi && x.skills.jiangyi.tao >= 2
+      );
+      if (lkAng && !this.over) await this.tryJiangyiEnd(lkAng);
+
       const lu = this.lu;
       const ctx = this.ctx;
       if (ctx && ctx.jieshuangActive && ctx.jieshuangTarget === p.id && lu && lu.alive) {
@@ -4903,9 +5194,17 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
       if (this.ctx) this.ctx.phase = 'draw';
       this.emit();
-      // 夷越第 1 档：摸牌阶段多摸 2 张
-      const yiyueBonus = p.skills.yiyue && p.skills.yiyue.tier >= 1 ? 2 : 0;
-      await this.draw(p, 2 + (p.skills.yingzi ? 1 : 0) + yiyueBonus);
+      // 稷成②：跳过下个摸牌阶段
+      if (p.flags.skipDraw > 0) {
+        p.flags.skipDraw--;
+        this.pushLog(`【稷成】${p.name} 跳过摸牌阶段。`, 'skill');
+        this.emit();
+        await this.pace();
+      } else {
+        // 夷越第 1 档：摸牌阶段多摸 2 张
+        const yiyueBonus = p.skills.yiyue && p.skills.yiyue.tier >= 1 ? 2 : 0;
+        await this.draw(p, 2 + (p.skills.yingzi ? 1 : 0) + yiyueBonus);
+      }
       if (this.over || !p.alive) return;
 
       await this.phasePlay(p);
@@ -5188,6 +5487,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             return true;
           }
 
+          /* ---- 陆抗 ---- */
+          if (req.tag === '江翊') return p.skills.jiangyi.tao >= 4;
+          if (req.tag === '稷成·发动') return p.skills.jiangyi.tao >= 4;
+          if (req.tag === '稷成·选项') {
+            // 有牌可弃才背水，否则选②最稳
+            return p.hand.length >= 3 ? 3 : 2;
+          }
+          if (req.tag === '爝烬') return true;
+
           return false;
         }
 
@@ -5198,6 +5506,20 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (bagua) return 'bagua'; // 先判定，不消耗手牌
           if (req.tag === 'dying') return opts[0].value;
           if (req.tag === 'discard') return opts[0].value;
+          if (req.tag === '稷成·弃牌') {
+            let worst = null;
+            let worstV = Infinity;
+            for (const o of opts) {
+              const c = E.handCard(p, o.value);
+              if (!c) continue;
+              const v = cardValue(c);
+              if (v < worstV) {
+                worstV = v;
+                worst = o;
+              }
+            }
+            return worst ? worst.value : null;
+          }
           if (req.tag === '九伐·弃牌' || req.tag === '誓守·弃牌' || req.tag === '龙翎·弃牌' || req.tag === '丈八·弃牌' || req.tag === '贯石斧·弃牌') {
             // 弃最没用的那张
             let worst = null;
@@ -6087,6 +6409,18 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         cls = lu.skills.guixin && lu.skills.guixin.yi >= 2 ? '' : 'used';
       } else if (key === 'zhulu' || key === 'xiaoxiong') {
         state = '被动';
+      } else if (key === 'jiangyi') {
+        state = `韬略 ${s.tao}/${s.max}`;
+        cls = s.tao >= 2 ? '' : 'used';
+      } else if (key === 'jicheng') {
+        const ok = lu.skills.jiangyi && lu.skills.jiangyi.tao >= 3;
+        state = ok ? '可发动' : '韬略不足';
+        cls = ok ? '' : 'used';
+      } else if (key === 'chizhong') {
+        state = '被动';
+      } else if (key === 'juejin') {
+        state = s.used ? '已用' : '可用';
+        cls = s.used ? 'used' : '';
       }
       const recName = key === 'junshi' && lu.flags && lu.flags.record;
       const tipExtra = recName
@@ -6219,6 +6553,30 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">' +
       '<path d="M12 3.4 4.4 6.8l1.2 6.4c.8 4 3.3 6.4 6.4 7.4 3.1-1 5.6-3.4 6.4-7.4l1.2-6.4Z"/>' +
       '<path d="M8.6 10.4h6.8M12 8v5" stroke-width="1.2"/>' +
+      '</svg>',
+    jiangyi:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M4 8.6c2-2.2 4.8-3.4 8-3.4s6 1.2 8 3.4"/>' +
+      '<path d="M5.6 12.4c1.6-1.6 3.8-2.5 6.4-2.5s4.8.9 6.4 2.5"/>' +
+      '<path d="M8.4 16.2c1-1 2.1-1.6 3.6-1.6s2.6.6 3.6 1.6"/>' +
+      '<path d="M12 18.2v2.4" stroke-width="1.3"/>' +
+      '</svg>',
+    jicheng:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 3.2v17.6"/>' +
+      '<path d="M12 7.4 5.4 4v6.6L12 7.4Z"/>' +
+      '<path d="M12 7.4 18.6 4v6.6L12 7.4Z"/>' +
+      '<path d="M5 20.4h14" stroke-width="1.3"/>' +
+      '</svg>',
+    chizhong:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">' +
+      '<path d="M12 3.2 5 5.8v5.6c0 4.2 2.8 7.4 7 9 4.2-1.6 7-4.8 7-9V5.8Z"/>' +
+      '<path d="M12 8.4v5.2M9.4 11h5.2" stroke-width="1.2"/>' +
+      '</svg>',
+    juejin:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 2.8c1.6 3 4.6 5.2 4.6 8.6a4.6 4.6 0 0 1-9.2 0c0-1.6.7-3 1.8-4.4"/>' +
+      '<path d="M12 14.6v6.2M9.6 18.4h4.8" stroke-width="1.2"/>' +
       '</svg>',
   };
 
@@ -6391,6 +6749,32 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         html += skillCardHtml(key, {
           state: '被动',
           meta: '你造成的伤害视为无来源（依赖伤害来源的效果不生效）。',
+        });
+      } else if (key === 'jiangyi') {
+        const bar = Array.from({ length: s.max }, (_, i) => `<i class="${i < s.tao ? 'on' : ''}"></i>`).join('');
+        html += skillCardHtml(key, {
+          state: `韬略 ${s.tao}/${s.max}`,
+          stateCls: s.tao >= 2 ? '' : 'used',
+          meta: '失去牌或成为他人用牌的目标时 +1；每个角色结束阶段可耗 2 点自己发一次【五谷丰登】。',
+          bar,
+        });
+      } else if (key === 'jicheng') {
+        const ok = lu.skills.jiangyi && lu.skills.jiangyi.tao >= 3;
+        html += skillCardHtml(key, {
+          state: ok ? '可发动' : '韬略不足',
+          stateCls: ok ? '' : 'used',
+          meta: '耗 3 点「韬略」：①目标距离 +1 到其结束阶段 ②跳过下个摸牌阶段 ③背水（全做）',
+        });
+      } else if (key === 'chizhong') {
+        html += skillCardHtml(key, {
+          state: '被动',
+          meta: '你不能被横置、不能成为延时锦囊的目标；受到的伤害始终为 1。',
+        });
+      } else if (key === 'juejin') {
+        html += skillCardHtml(key, {
+          state: s.used ? '已用' : '可用',
+          stateCls: s.used ? 'used' : '',
+          meta: '濒死时可选一名其他角色，其余角色的下 6 张牌不能以其为目标。',
         });
       } else {
         html += skillCardHtml(key, { state: '被动' });
