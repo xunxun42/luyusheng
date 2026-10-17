@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 18:19 · b8ee1b4">
+<meta name="x-build" content="2026-10-17 18:28 · df7de5e">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -712,6 +712,20 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
 .self-meta { min-width: 0; }
 .equips-line { font-size: 11px; color: var(--gold-2); margin-top: 6px; line-height: 1.5; }
+
+/* 武将牌上的附着牌（姜维的「明」） */
+.mark-chip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 1px;
+  color: #cbaaf0;
+  border: 1px solid rgba(170, 132, 220, 0.5);
+  background: rgba(120, 80, 180, 0.18);
+}
 .equips-line .sep, .stat-row .sep { color: rgba(216, 180, 106, 0.45); margin: 0 4px; font-style: normal; }
 
 .skill-row { display: flex; gap: 8px; padding: 2px 2px 8px; }
@@ -2280,6 +2294,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       maxHp: 4,
       skills: ['junshi', 'wuku', 'yiyue'],
     },
+    jiangwei: {
+      key: 'jiangwei',
+      name: '姜维',
+      kingdom: '蜀',
+      title: '江山如故',
+      maxHp: 4,
+      skills: ['jiufa', 'youhan'], // 誓守在九伐失败后动态获得
+    },
   };
 
   /* 牌名 → 牌面文字，用于「记录」选择与日志 */
@@ -2416,6 +2438,34 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         '2. 你的手牌上限+2。\n' +
         '3. 你的「记录」牌名可以变为任意牌名（视为所有牌名）。',
     },
+    jiufa: {
+      name: '九伐',
+      kind: '限定技',
+      tagline: '越伐越强，手牌一动就能再来一次',
+      when: '出牌阶段（每次发动后计数 +1，上限 9）',
+      text:
+        '出牌阶段，你可以从手牌或牌堆弃置X张牌（X为你发动此技能的次数且至多为9），' +
+        '令至多X名角色出一张【杀】指向你，否则受到你造成的一点伤害。\n' +
+        '若你手牌因此变动，此技能视为未发动过；否则你获得【誓守】并获得本回合你弃置的牌。',
+    },
+    youhan: {
+      name: '幽汉',
+      kind: '锁定技',
+      tagline: '装备当决斗，谁杀你谁掉牌',
+      when: '使用装备牌时 / 你成为【杀】的目标时',
+      text: '你的装备牌视为【决斗】。\n当你成为【杀】的目标时，你弃置其一张牌。',
+    },
+    shishou: {
+      name: '誓守',
+      kind: '出牌阶段限一次',
+      tagline: '把牌盖成「明」，挨打时换回血',
+      when: '出牌阶段 / 你受到伤害时',
+      text:
+        '出牌阶段限一次，你可以弃置至多X张牌（X为你发动九伐的次数），' +
+        '然后从牌堆盖置等量牌于你的武将牌上，称为明。\n' +
+        '每次你受到伤害，你可以移去一张明并回复一点体力，' +
+        '若你的体力与受伤前相同，你摸2张牌。',
+    },
     paoxiao: {
       name: '咆哮',
       kind: '锁定技',
@@ -2491,8 +2541,13 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (key === 'junshi') p.skills.junshi = { charge: 0, max: 5, spent: 0 };
       if (key === 'wuku') p.skills.wuku = { passive: true };
       if (key === 'yiyue') p.skills.yiyue = { tier: 0 };
+      if (key === 'jiufa') p.skills.jiufa = { uses: 0, armed: true };
+      if (key === 'youhan') p.skills.youhan = { passive: true };
+      if (key === 'shishou') p.skills.shishou = { used: 0 };
     });
     p.flags.record = null; // 军势「记录」的牌名
+    // 武将牌上的附着牌（姜维的「明」；后续诸葛亮的星、赵云的霖也放这里）
+    p.marks = { ming: [], star: [], lin: [] };
     return p;
   }
 
@@ -2832,6 +2887,252 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       await this.useCard(d, v, targets);
     }
 
+    /* --------------------- 姜维：九伐 / 幽汉 / 誓守 --------------------- */
+
+    /** 取牌堆顶一张（空了先洗牌） */
+    popDeck() {
+      if (!this.deck.length) this.reshuffle();
+      return this.deck.pop() || null;
+    }
+
+    /** 手里能当【杀】使用/打出的牌（含龙胆、武圣转换） */
+    shaCardOf(p) {
+      if (!p) return null;
+      return (
+        p.hand.find((c) => c.name === 'sha') ||
+        (p.skills.longdan ? p.hand.find((c) => c.name === 'shan') : null) ||
+        (p.skills.wusheng ? p.hand.find((c) => c.red && c.name !== 'sha') : null) ||
+        null
+      );
+    }
+
+    /**
+     * 九伐：弃 X 张 → 令至多 X 名角色出【杀】指向自己，不出则受你 1 点伤害。
+     * 手牌因此变动 → 视为未发动过；否则获得【誓守】并收回本回合弃置的牌。
+     */
+    async activateJiufa(p) {
+      const j = p.skills.jiufa;
+      if (!j || !j.armed || !p.alive) return;
+      if (this.over) return;
+
+      const x = Math.min(9, j.uses + 1);
+      const yes = await this.confirm(
+        p,
+        `【九伐】发动第 ${x} 次：弃置 X=${x} 张牌（手牌或牌堆顶），然后令至多 ${x} 名角色出【杀】指向你，` +
+          `不出则受到你造成的 1 点伤害。\n发动？`,
+        '九伐·发动',
+        { x }
+      );
+      if (!yes) return;
+
+      j.uses = x;
+      const handBefore = p.hand.length;
+      let fromHand = 0;
+
+      for (let i = 0; i < x; i++) {
+        let card = null;
+        if (p.hand.length) {
+          if (p.isAI) {
+            card = this.ai ? this.ai.pickDiscard(this, p) : p.hand[0];
+          } else {
+            const options = p.hand.map((c) => ({
+              label: `【${c.label}】${c.suit}${c.rank}`,
+              value: c.id,
+              cardId: c.id,
+            }));
+            const id = await this.ask(p, {
+              kind: 'playCard',
+              tag: '九伐·弃牌',
+              text: `【九伐】弃置第 ${i + 1}/${x} 张：点一张手牌，或点「牌堆顶补上」`,
+              options,
+              cancel: true,
+              cancelLabel: '牌堆顶补上',
+            });
+            card = id ? this.handCard(p, id) : null;
+          }
+        }
+        if (card) {
+          this.takeFromHand(p, card.id);
+          this.toDiscard(card, p, true);
+          fromHand++;
+          this.pushLog(`【九伐】${p.name} 弃置【${card.label}】${card.suit}${card.rank}`, 'skill');
+        } else {
+          const top = this.popDeck();
+          if (top) {
+            // 记为「本回合你弃置的牌」，九伐失败时才能收回来
+            this.toDiscard(top, p, true);
+            this.pushLog(`【九伐】${p.name} 从牌堆顶弃置 1 张`, 'system');
+          }
+        }
+        this.emit();
+        await this.pace();
+      }
+
+      // 令至多 X 名角色出杀
+      const others = this.aliveOthers(p);
+      const n = Math.min(x, others.length);
+      let picks = others.slice(0, n);
+      if (n < others.length && n > 0) {
+        picks = [];
+        for (let i = 0; i < n; i++) {
+          const pool = others.filter((o) => !picks.includes(o));
+          const t = await this.pickTarget(p, pool, `【九伐】选择第 ${i + 1} 名目标`, '九伐·目标');
+          if (!t) break;
+          picks.push(t);
+        }
+      }
+
+      for (const t of picks) {
+        if (!t || !t.alive || this.over) continue;
+        const sha = this.shaCardOf(t);
+        let willUse = false;
+        if (sha) {
+          willUse = await this.confirm(
+            t,
+            `【九伐】${p.name} 令你出一张【杀】指向他，否则受到 1 点伤害。\n是否出杀？`,
+            '九伐·出杀',
+            { targetId: p.id, cardId: sha.id }
+          );
+        }
+        if (willUse && sha) {
+          // 「视为算使用」：真的走一次使用结算，姜维可以闪
+          this.pushLog(`【九伐】${t.name} 出【${sha.label}】`, 'skill');
+          this.emit();
+          await this.useCard(t, sha, [p.id]);
+        } else {
+          this.pushLog(`【九伐】${t.name} 没有出【杀】，受到 1 点伤害。`, 'skill');
+          this.emit();
+          await this.damage({ sourceId: p.id, targetId: t.id, amount: 1, cause: '九伐' });
+        }
+        await this.pace();
+      }
+
+      // 结算：手牌变动 → 视为未发动过；否则获得【誓守】并收回本回合弃置的牌
+      if (p.hand.length !== handBefore || fromHand > 0) {
+        j.armed = true;
+        this.pushLog(`【九伐】${p.name} 的手牌因此变动，此技能视为未发动过。`, 'skill');
+      } else {
+        j.armed = false;
+        this.pushLog(`【九伐】${p.name} 的手牌未因此变动，此技能不再发动：获得【誓守】。`, 'skill');
+        p.skills.shishou = p.skills.shishou || { used: 0 };
+        const ctx = this.ctx;
+        if (ctx && ctx.discarded && ctx.discarded.length) {
+          const back = [];
+          for (const c of ctx.discarded.slice()) {
+            const i = this.discard.indexOf(c);
+            if (i >= 0) {
+              this.discard.splice(i, 1);
+              back.push(c);
+            }
+          }
+          if (back.length) {
+            p.hand.push(...back);
+            ctx.discarded = ctx.discarded.filter((c) => !back.includes(c));
+            this.pushLog(`【九伐】${p.name} 收回本回合弃置的 ${back.length} 张牌。`, 'skill');
+          }
+        }
+      }
+      this.emit();
+    }
+
+    /** 誓守：弃至多 X 张手牌，摸等量牌盖置为「明」 */
+    async activateShishou(p) {
+      const s = p.skills.shishou;
+      const j = p.skills.jiufa;
+      if (!s || !j || !p.alive || this.over) return;
+      const x = Math.min(9, j.uses);
+      if (x <= 0 || !p.hand.length) return;
+
+      const yes = await this.confirm(
+        p,
+        `【誓守】弃置至多 ${x} 张手牌，然后从牌堆盖置等量牌为「明」` +
+          `（当前 ${p.marks.ming.length} 张）。\n发动？`,
+        '誓守',
+        { x, ming: p.marks.ming.length }
+      );
+      if (!yes) return;
+
+      let count = 0;
+      for (let i = 0; i < x && p.hand.length; i++) {
+        let card = null;
+        if (p.isAI) {
+          card = this.ai ? this.ai.pickDiscard(this, p) : p.hand[0];
+        } else {
+          const options = p.hand.map((c) => ({
+            label: `【${c.label}】${c.suit}${c.rank}`,
+            value: c.id,
+            cardId: c.id,
+          }));
+          const id = await this.ask(p, {
+            kind: 'playCard',
+            tag: '誓守·弃牌',
+            text: `【誓守】弃置第 ${i + 1} 张（最多 ${x} 张），点「完成」结束`,
+            options,
+            cancel: true,
+            cancelLabel: '完成',
+          });
+          card = id ? this.handCard(p, id) : null;
+          if (!card) break;
+        }
+        if (!card) break;
+        this.takeFromHand(p, card.id);
+        this.toDiscard(card, p, true);
+        count++;
+        this.emit();
+      }
+      if (!count) return;
+
+      let placed = 0;
+      for (let i = 0; i < count; i++) {
+        const c = this.popDeck();
+        if (c) {
+          p.marks.ming.push(c);
+          placed++;
+        }
+      }
+      s.used++;
+      this.pushLog(
+        `【誓守】${p.name} 弃置 ${count} 张牌，盖置 ${placed} 张为「明」（明 ${p.marks.ming.length} 张）。`,
+        'skill'
+      );
+      this.emit();
+    }
+
+    /** 誓守的受伤结算：移去一张明回血，体力回到受伤前则摸 2 张 */
+    async tryShishouOnDamage(p, hpBefore) {
+      const s = p.skills.shishou;
+      if (!s || !p.alive || p.hp <= 0) return;
+      if (!p.marks || !p.marks.ming.length) return;
+
+      const yes = await this.confirm(
+        p,
+        `【誓守】移去一张「明」并回复 1 点体力？（明 ${p.marks.ming.length} 张，体力 ${p.hp}/${p.maxHp}）`,
+        '誓守·回复',
+        { ming: p.marks.ming.length }
+      );
+      if (!yes) return;
+
+      p.marks.ming.pop();
+      this.heal(p, 1, '誓守');
+      if (p.hp === hpBefore) {
+        this.pushLog(`【誓守】${p.name} 的体力与受伤前相同，摸 2 张牌。`, 'skill');
+        await this.draw(p, 2);
+      }
+      this.emit();
+    }
+
+    /** 幽汉：姜维成为【杀】的目标时，弃置使用者一张牌 */
+    async tryYouhanOnTarget(jiangwei, attacker) {
+      if (!jiangwei || !attacker || !jiangwei.alive || !jiangwei.skills.youhan) return;
+      if (jiangwei === attacker) return;
+      const hasCards =
+        attacker.hand.length || SLOT_ORDER.some((s) => attacker.equips[s]);
+      if (!hasCards) return;
+      this.pushLog(`【幽汉】${jiangwei.name} 弃置 ${attacker.name} 的一张牌。`, 'skill');
+      this.emit();
+      await this.resolveStealLike(jiangwei, attacker, 'discard');
+    }
+
     /* ------------------------------ 摸牌 ------------------------------ */
 
     reshuffle() {
@@ -2928,11 +3229,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       // 军势：使用与「记录」同名的牌 → 无距离限制、无次数限制
       const recHit = !!p.skills.junshi && this.matchesRecord(p, card);
 
+      // 幽汉：姜维的装备牌视为【决斗】
+      const effName = p.skills.youhan && card.type === 'equip' ? 'juedou' : card.name;
+
       // 视为【杀】：真杀 / 龙胆的闪 / 武圣的红牌
       const asSha =
-        card.name === 'sha' ||
-        (card.name === 'shan' && !!p.skills.longdan) ||
-        (!!p.skills.wusheng && card.red && card.name !== 'sha');
+        effName === 'sha' ||
+        (effName === 'shan' && !!p.skills.longdan) ||
+        (!!p.skills.wusheng && card.red && effName !== 'sha');
 
       if (asSha) {
         if (this.ctx.shaUsed >= 1 && !p.skills.paoxiao && !recHit) return deny('本回合已使用过【杀】');
@@ -2941,7 +3245,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         return { ok: true, needTargets: true, targets: reach.map((o) => o.id), reason: '' };
       }
 
-      switch (card.name) {
+      switch (effName) {
         case 'tao': {
           if (p.hp >= p.maxHp) return deny('体力已满');
           return { ok: true, needTargets: false, targets: [], reason: '' };
@@ -2979,7 +3283,6 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           return deny('无法使用');
       }
     }
-
     /* ------------------------------ 判定 ------------------------------ */
 
     judge(p, cause) {
@@ -2994,8 +3297,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     /* ------------------------------ 出牌 ------------------------------ */
 
     async useCard(p, card, targetIds) {
+      // 幽汉：姜维的装备牌视为【决斗】，不进装备区而是走锦囊结算
+      const youhanTrick = !!(p.skills.youhan && card.type === 'equip');
+
       // 装备：不进入弃牌堆，直接置入装备区
-      if (card.type === 'equip') {
+      if (card.type === 'equip' && !youhanTrick) {
         if (!card.virtual) this.takeFromHand(p, card.id);
         const slot = card.slot;
         if (p.equips[slot]) {
@@ -3016,12 +3322,16 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       let targets = (targetIds || []).map((id) => this.get(id)).filter(Boolean);
       if (!card.virtual) this.takeFromHand(p, card.id);
 
+      // 牌名：幽汉把装备牌当【决斗】看待
+      const effName = youhanTrick ? 'juedou' : card.name;
+
       const asSha =
-        card.name === 'sha' ||
-        (card.name === 'shan' && !!p.skills.longdan) ||
-        (!!p.skills.wusheng && card.red && card.name !== 'sha');
+        effName === 'sha' ||
+        (effName === 'shan' && !!p.skills.longdan) ||
+        (!!p.skills.wusheng && card.red && effName !== 'sha');
       let label = card.label;
-      if (asSha && card.name !== 'sha') label = `${card.label}（当杀）`;
+      if (youhanTrick) label = `${card.label}（当决斗）`;
+      else if (asSha && effName !== 'sha') label = `${card.label}（当杀）`;
       this.pushLog(
         `${p.name} 使用【${label}】${card.suit}${card.rank}` +
           (targets.length ? ' → ' + targets.map((t) => t.name).join('、') : ''),
@@ -3063,6 +3373,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         }
         const t = targets[0];
         if (t && t.alive) {
+          // 幽汉：姜维成为【杀】的目标时，弃置使用者一张牌（锁定技，先结算）
+          if (t.skills.youhan) await this.tryYouhanOnTarget(t, p);
           const dodged = await this.askForResponse(t, 'shan', `${p.name} 的【杀】`);
           if (!dodged) {
             await this.damage({ sourceId: p.id, targetId: t.id, amount: dmg, cause: dmg > 1 ? '酒杀' : '杀' });
@@ -3073,7 +3385,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           }
         }
       } else {
-        switch (card.name) {
+        switch (effName) {
           case 'jiu': {
             this.ctx.jiuUsed = (this.ctx.jiuUsed || 0) + 1;
             p.flags.jiuBonus = true;
@@ -3336,6 +3648,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (adjusted === 0) return 0; // 已被防止
       if (typeof adjusted === 'number') amount = adjusted;
 
+      const hpBefore = t.hp;
       t.hp -= amount;
       t.stats.damageTaken += amount;
       const src = this.get(evt.sourceId);
@@ -3348,6 +3661,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       );
       this.emit();
       await this.pace();
+
+      // 誓守：受到伤害后可以移去一张「明」回血（在濒死结算之前，奶回来就不用求桃了）
+      if (t.alive && t.skills.shishou && t.marks && t.marks.ming.length) {
+        await this.tryShishouOnDamage(t, hpBefore);
+      }
+
       await this.checkDying(t);
 
       // 刚烈：受到伤害后判定，非红桃则伤害来源失去 1 点体力
@@ -3622,6 +3941,17 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         this.ctx.jiuUsed = 0;
       }
       this.emit();
+
+      // 姜维：出牌阶段先问九伐（限定技），再问誓守（限一次）
+      if (p.skills.jiufa && p.skills.jiufa.armed) {
+        await this.activateJiufa(p);
+        if (this.over || !p.alive) return;
+      }
+      if (p.skills.shishou && !p.skills.shishou.used && p.marks.ming && p.hand.length) {
+        await this.activateShishou(p);
+        if (this.over || !p.alive) return;
+      }
+
       for (let guard = 0; guard < 80; guard++) {
         if (this.over || !p.alive) return;
         const action = await this.pickAction(p);
@@ -3720,6 +4050,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         jieshuangTarget: null,
       };
       p.flags.jiuBonus = false;
+      if (p.skills.shishou) p.skills.shishou.used = 0; // 誓守：每个出牌阶段限一次
       this.lastResponse = null; // 新回合清掉上一回合的响应牌，避免误解成这一回合的
       this.pushLog(`── ${this.round} 轮 · ${p.name} 的回合 ──`, 'turn');
       this.emit();
@@ -3814,6 +4145,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         SLOT_ORDER.forEach((s) => {
           if (p.equips[s]) n += 1;
         });
+        // 武将牌上的附着牌（明 / 星 / 霖）也算，否则牌数会少
+        if (p.marks) {
+          n += p.marks.ming.length + p.marks.star.length + p.marks.lin.length;
+        }
       }
       return n;
     }
@@ -3926,6 +4261,18 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             return 1;
           }
 
+          /* ---- 姜维 ---- */
+          if (req.tag === '九伐·发动') {
+            // 手牌够付 X 张、且对手手牌少（更可能没有杀）时发动
+            const x = m.x || 1;
+            const foe = E.aliveOthers(p)[0];
+            if (p.hand.length < x + 1) return false;
+            return !foe || foe.hand.length <= 2 || p.hand.length >= x + 3;
+          }
+          if (req.tag === '九伐·出杀') return true; // 出一张杀免 1 点伤害，值
+          if (req.tag === '誓守') return p.hand.length >= 2;
+          if (req.tag === '誓守·回复') return p.marks && p.marks.ming.length > 0 && p.hp < p.maxHp;
+
           return false;
         }
 
@@ -3936,6 +4283,21 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (bagua) return 'bagua'; // 先判定，不消耗手牌
           if (req.tag === 'dying') return opts[0].value;
           if (req.tag === 'discard') return opts[0].value;
+          if (req.tag === '九伐·弃牌' || req.tag === '誓守·弃牌') {
+            // 弃最没用的那张
+            let worst = null;
+            let worstV = Infinity;
+            for (const o of opts) {
+              const c = E.handCard(p, o.value);
+              if (!c) continue;
+              const v = cardValue(c);
+              if (v < worstV) {
+                worstV = v;
+                worst = o;
+              }
+            }
+            return worst ? worst.value : null;
+          }
           const exact = opts.find((o) => {
             const c = E.handCard(p, o.value);
             return c && c.name === req.need;
@@ -4047,6 +4409,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         if (c) {
           const a = attempt(c, [foe.id]);
           if (a) return a;
+        }
+        // 幽汉：装备牌视为决斗
+        if (p.skills.youhan) {
+          const eq = p.hand.find((x) => x.type === 'equip');
+          if (eq) {
+            const a2 = attempt(eq, [foe.id]);
+            if (a2) return a2;
+          }
         }
       }
 
@@ -4680,7 +5050,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
   function renderSelf(E, lu) {
     renderGems(el.selfHp, lu);
-    el.selfEquips.innerHTML = equipHtml(lu.equips);
+    el.selfEquips.innerHTML =
+      equipHtml(lu.equips) +
+      (lu.marks && lu.marks.ming.length
+        ? `<i class="mark-chip">明 ×${lu.marks.ming.length}</i>`
+        : '');
 
     el.selfName.textContent = lu.name;
     el.selfKingdom.textContent = lu.kingdom;
@@ -4739,8 +5113,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     return names.length ? names.join('<i class="sep">·</i>') : '—';
   }
 
+  /* 技能键：武将自带的 + 运行中动态获得的（如姜维的誓守） */
+  function skillKeysOf(p) {
+    const base = (GD[p.general] && GD[p.general].skills) || [];
+    const extra = Object.keys(p.skills).filter((k) => !base.includes(k) && SKILL_INFO[k]);
+    return base.concat(extra);
+  }
+
   function renderSkills(E, lu) {
-    const keys = (GD[lu.general] && GD[lu.general].skills) || Object.keys(lu.skills);
+    const keys = skillKeysOf(lu);
     const chips = [];
     keys.forEach((key) => {
       const info = SKILL_INFO[key];
@@ -4767,6 +5148,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       } else if (key === 'yiyue') {
         state = s.tier >= 3 ? '全牌名' : `${s.tier}/3`;
         cls = s.tier >= 3 ? '' : 'used';
+      } else if (key === 'jiufa') {
+        state = s.armed ? `已发 ${s.uses} 次` : `已封 ${s.uses} 次`;
+        cls = s.armed ? '' : 'used';
+      } else if (key === 'youhan') {
+        state = '被动';
+      } else if (key === 'shishou') {
+        state = s.used ? '已用' : (lu.marks && lu.marks.ming.length ? `明 ${lu.marks.ming.length}` : '可用');
+        cls = s.used ? 'used' : '';
       }
       const recName = key === 'junshi' && lu.flags && lu.flags.record;
       const tipExtra = recName
@@ -4882,13 +5271,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   }
 
   function renderSkillPanel(E, lu, foes) {
-    const keys = (GD[lu.general] && GD[lu.general].skills) || Object.keys(lu.skills);
+    const keys = skillKeysOf(lu);
     const sig = [
       E.round,
       lu.general,
       foes.map((f) => f.general).join(','),
       keys.map((k) => (lu.skills[k] ? JSON.stringify(lu.skills[k]) : 'x')).join(','),
       lu.flags && lu.flags.record ? lu.flags.record : '-',
+      lu.marks ? lu.marks.ming.length : 0,
     ].join('|');
     if (sig === state.skillSig) return;
     state.skillSig = sig;
@@ -4956,6 +5346,28 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           meta:
             `已累计消耗 ${spent} 点` +
             (next == null ? '　已解锁全部效果' : `　距离下一档还需 ${next - spent} 点`),
+        });
+      } else if (key === 'jiufa') {
+        html += skillCardHtml(key, {
+          state: s.armed ? `已发动 ${s.uses} 次` : `已封（${s.uses} 次）`,
+          stateCls: s.armed ? '' : 'used',
+          meta:
+            (s.armed
+              ? `下次发动 X = ${Math.min(9, s.uses + 1)}（弃 ${Math.min(9, s.uses + 1)} 张）`
+              : '手牌未因此变动过，本局不再可用') +
+            (s.armed ? '　· 手牌因此变动即可继续发动' : ''),
+        });
+      } else if (key === 'youhan') {
+        html += skillCardHtml(key, {
+          state: '被动',
+          meta: '手牌里的装备牌可当【决斗】使用；被杀指定时弃置其一张牌。',
+        });
+      } else if (key === 'shishou') {
+        const ming = lu.marks ? lu.marks.ming.length : 0;
+        html += skillCardHtml(key, {
+          state: s.used ? '本回合已用' : '可用',
+          stateCls: s.used ? 'used' : '',
+          meta: `「明」${ming} 张 · 可弃至多 ${Math.min(9, lu.skills.jiufa ? lu.skills.jiufa.uses : 0)} 张`,
         });
       } else {
         html += skillCardHtml(key, { state: '被动' });
