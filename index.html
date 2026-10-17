@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 18:28 · df7de5e">
+<meta name="x-build" content="2026-10-17 18:58 · facd2bd">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2302,6 +2302,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       maxHp: 4,
       skills: ['jiufa', 'youhan'], // 誓守在九伐失败后动态获得
     },
+    zhaoyunling: {
+      key: 'zhaoyunling',
+      name: '赵云',
+      kingdom: '蜀',
+      title: '七进七出',
+      maxHp: 4,
+      skills: ['longling', 'qinjun', 'duange'],
+    },
   };
 
   /* 牌名 → 牌面文字，用于「记录」选择与日志 */
@@ -2466,6 +2474,37 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         '每次你受到伤害，你可以移去一张明并回复一点体力，' +
         '若你的体力与受伤前相同，你摸2张牌。',
     },
+    longling: {
+      name: '龙翎',
+      kind: '蓄力技',
+      tagline: '七进七出的蓄力与万用基本牌',
+      when: '你对其他角色使用牌 / 你失去体力时',
+      text:
+        '每次你对其他角色使用牌或当你失去体力时，你获得1点蓄力点（上限7）。\n' +
+        '你可以将【杀】当【闪】、【闪】当【杀】使用或打出。\n' +
+        '你可以消耗1点蓄力点并弃置两张牌，视为使用或打出任意基本牌。',
+    },
+    qinjun: {
+      name: '勤君',
+      kind: '蓄力技',
+      tagline: '替人代打，掉血换牌',
+      when: '任意角色需要使用或打出基本牌时',
+      text:
+        '任意角色需要使用或打出基本牌时，你可以消耗2点蓄力点，视为该角色打出或使用此基本牌。\n' +
+        '若如此做，你失去1点体力，然后亮出牌堆顶2张牌，' +
+        '获得其中与打出的牌牌名不同的牌。',
+    },
+    duange: {
+      name: '锻戈',
+      kind: '登峰技',
+      tagline: '每消耗 7 点蓄力点，依次解锁三档',
+      when: '累计消耗蓄力点达到 7 / 14 / 21 时',
+      text:
+        '你每失去7点蓄力点，依次获得以下效果：\n' +
+        '1. 你使用牌无距离和次数限制。\n' +
+        '2. 你打出【杀】或【闪】后，弃置任意角色一张牌。\n' +
+        '3. 「勤君」亮出的牌数修改为3。',
+    },
     paoxiao: {
       name: '咆哮',
       kind: '锁定技',
@@ -2544,6 +2583,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (key === 'jiufa') p.skills.jiufa = { uses: 0, armed: true };
       if (key === 'youhan') p.skills.youhan = { passive: true };
       if (key === 'shishou') p.skills.shishou = { used: 0 };
+      if (key === 'longling') p.skills.longling = { charge: 0, max: 7, spent: 0 };
+      if (key === 'qinjun') p.skills.qinjun = { passive: true };
+      if (key === 'duange') p.skills.duange = { tier: 0 };
     });
     p.flags.record = null; // 军势「记录」的牌名
     // 武将牌上的附着牌（姜维的「明」；后续诸葛亮的星、赵云的霖也放这里）
@@ -3121,8 +3163,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.emit();
     }
 
-    /** 幽汉：姜维成为【杀】的目标时，弃置使用者一张牌 */
-    async tryYouhanOnTarget(jiangwei, attacker) {
+    /** 幽汉：姜维成为【杀】的目标时，弃置使用者一张牌 */    async tryYouhanOnTarget(jiangwei, attacker) {
       if (!jiangwei || !attacker || !jiangwei.alive || !jiangwei.skills.youhan) return;
       if (jiangwei === attacker) return;
       const hasCards =
@@ -3131,6 +3172,220 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.pushLog(`【幽汉】${jiangwei.name} 弃置 ${attacker.name} 的一张牌。`, 'skill');
       this.emit();
       await this.resolveStealLike(jiangwei, attacker, 'discard');
+    }
+
+    /* ------------------- 赵云（七进七出）：龙翎 / 勤君 / 锻戈 ------------------- */
+
+    /** 杀 ↔ 闪 的转换：龙胆或龙翎都提供 */
+    hasLongdan(p) {
+      return !!(p && (p.skills.longdan || p.skills.longling));
+    }
+
+    llGain(p, n) {
+      if (!p || !p.alive || !p.skills.longling) return;
+      const s = p.skills.longling;
+      if (s.charge >= s.max) return;
+      s.charge = Math.min(s.max, s.charge + (n || 1));
+    }
+
+    llSpend(p, n) {
+      const s = p.skills.longling;
+      if (!s || s.charge < n) return false;
+      s.charge -= n;
+      s.spent += n;
+      this.checkDuange(p);
+      return true;
+    }
+
+    checkDuange(p) {
+      const d = p.skills.duange;
+      if (!d || !p.skills.longling) return;
+      const need = [7, 14, 21];
+      const eff = [
+        '使用牌无距离和次数限制',
+        '打出【杀】/【闪】后弃置任意角色一张牌',
+        '「勤君」亮出的牌数改为 3',
+      ];
+      while (d.tier < 3 && p.skills.longling.spent >= need[d.tier]) {
+        d.tier++;
+        this.pushLog(
+          `【锻戈】${p.name} 累计消耗 ${need[d.tier - 1]} 点蓄力点，解锁效果 ${d.tier}：${eff[d.tier - 1]}。`,
+          'skill'
+        );
+        this.emit();
+      }
+    }
+
+    /** 从手牌里弃 n 张（AI 自动选，人类逐张点） */
+    async discardFromHand(p, n, tag, text) {
+      let count = 0;
+      for (let i = 0; i < n && p.hand.length; i++) {
+        let card = null;
+        if (p.isAI) {
+          card = this.ai ? this.ai.pickDiscard(this, p) : p.hand[0];
+        } else {
+          const options = p.hand.map((c) => ({
+            label: `【${c.label}】${c.suit}${c.rank}`,
+            value: c.id,
+            cardId: c.id,
+          }));
+          const id = await this.ask(p, {
+            kind: 'playCard',
+            tag,
+            text: text || `弃置第 ${i + 1}/${n} 张`,
+            options,
+          });
+          card = id ? this.handCard(p, id) : null;
+        }
+        if (!card) break;
+        this.takeFromHand(p, card.id);
+        this.toDiscard(card, p, true);
+        count++;
+        this.emit();
+      }
+      return count;
+    }
+
+    /**
+     * 龙翎：耗 1 点蓄力点 + 弃两张牌，视为使用一张任意基本牌。
+     * 出牌阶段开始时询问一次（不是无限循环，避免弹窗刷屏）。
+     */
+    async activateLongling(p) {
+      const s = p.skills.longling;
+      if (!s || !p.alive || this.over) return;
+      if (s.charge < 1 || p.hand.length < 2) return;
+
+      const yes = await this.confirm(
+        p,
+        `【龙翎】消耗1点蓄力点并弃置两张牌，视为使用任意一张基本牌。\n（蓄力 ${s.charge}/${s.max}，手牌 ${p.hand.length} 张）`,
+        '龙翎·发动',
+        { charge: s.charge }
+      );
+      if (!yes) return;
+
+      const name = await this.ask(p, {
+        kind: 'confirm',
+        tag: '龙翎·牌名',
+        text: '视为使用哪张基本牌？',
+        options: [
+          { label: '【杀】', value: 'sha' },
+          { label: '【闪】', value: 'shan' },
+          { label: '【桃】', value: 'tao' },
+          { label: '【酒】', value: 'jiu' },
+        ],
+        cancel: true,
+        cancelLabel: '取消',
+      });
+      if (!name) return;
+
+      const dropped = await this.discardFromHand(p, 2, '龙翎·弃牌', '【龙翎】弃置第 1/2 张');
+      if (dropped < 2) {
+        this.pushLog('【龙翎】手牌不足两张，视为使用落空。', 'system');
+        return;
+      }
+      this.llSpend(p, 1);
+
+      this.virtSeq = (this.virtSeq || 0) + 1;
+      const v = {
+        id: 'virt-longling-' + this.virtSeq,
+        virtual: true,
+        name,
+        label: NAME_LABEL[name] || name,
+        type: 'basic',
+        suit: '',
+        rank: '',
+        red: false,
+      };
+
+      let targets = [];
+      if (name === 'sha') {
+        const foes = this.aliveOthers(p);
+        const free = p.skills.duange && p.skills.duange.tier >= 1;
+        const avail = free ? foes : foes.filter((o) => this.distance(p, o) <= this.rangeOf(p));
+        if (!avail.length) {
+          this.pushLog('【龙翎】没有可选目标，视为使用落空。', 'system');
+          return;
+        }
+        targets = [avail[0].id];
+      }
+
+      this.pushLog(`【龙翎】${p.name} 弃置两张牌，视为使用【${v.label}】。`, 'skill');
+      this.emit();
+      await this.pace();
+      await this.useCard(p, v, targets);
+    }
+
+    /**
+     * 勤君：任意角色需要基本牌时，持勤君者可以耗 2 点蓄力点代打。
+     * 代打者失去 1 点体力，亮出牌堆顶 N 张，获得牌名不同的那些。
+     */
+    async tryQinjun(responder, need) {
+      if (this.inQinjun) return false;
+      const needLabel = need === 'shan' ? '闪' : need === 'sha' ? '杀' : '桃';
+
+      const holders = this.players.filter(
+        (z) => z.alive && z.skills.qinjun && z.skills.longling && z.skills.longling.charge >= 2
+      );
+      for (const z of holders) {
+        if (this.over) return false;
+        const self = z === responder;
+        const yes = await this.ask(z, {
+          kind: 'confirm',
+          tag: '勤君',
+          meta: { need, targetId: responder.id, isSelf: self },
+          text:
+            `【勤君】${self ? '你' : responder.name} 需要打出【${needLabel}】。\n` +
+            `消耗2点蓄力点视为${self ? '你' : '其'}打出？你会失去1点体力，然后亮出牌堆顶2张牌。`,
+          options: [
+            { label: '发动', value: true },
+            { label: '不发动', value: false },
+          ],
+        });
+        if (!yes) continue;
+
+        this.inQinjun = true;
+        try {
+          this.llSpend(z, 2);
+          this.pushLog(`【勤君】${z.name} 视为${self ? '自己' : '替 ' + responder.name}打出【${needLabel}】。`, 'skill');
+          this.emit();
+          await this.pace();
+          await this.loseHp(z, 1, '勤君');
+
+          const n = z.skills.duange && z.skills.duange.tier >= 3 ? 3 : 2;
+          const rev = [];
+          for (let i = 0; i < n; i++) {
+            const c = this.popDeck();
+            if (c) rev.push(c);
+          }
+          const gain = rev.filter((c) => c.name !== need);
+          const rest = rev.filter((c) => c.name === need);
+          if (gain.length) z.hand.push(...gain);
+          rest.forEach((c) => this.toDiscard(c, z, false));
+          this.pushLog(
+            `【勤君】亮出 ${rev.map((c) => `【${c.label}】`).join('') || '（牌堆空）'}，` +
+              `获得牌名不同的 ${gain.length} 张。`,
+            'skill'
+          );
+          this.emit();
+        } finally {
+          this.inQinjun = false;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    /** 锻戈 2 档：打出【杀】/【闪】后，弃置任意角色一张牌 */
+    async tryDuangeDiscard(p) {
+      const d = p.skills.duange;
+      if (!d || d.tier < 2) return;
+      const pool = this.aliveOthers(p).filter(
+        (o) => o.hand.length || SLOT_ORDER.some((s) => o.equips[s])
+      );
+      if (!pool.length) return;
+      const t = await this.pickTarget(p, pool, '【锻戈】弃置一名角色的一张牌', '锻戈·目标');
+      if (!t) return;
+      await this.resolveStealLike(p, t, 'discard');
     }
 
     /* ------------------------------ 摸牌 ------------------------------ */
@@ -3232,15 +3487,21 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       // 幽汉：姜维的装备牌视为【决斗】
       const effName = p.skills.youhan && card.type === 'equip' ? 'juedou' : card.name;
 
-      // 视为【杀】：真杀 / 龙胆的闪 / 武圣的红牌
+      // 视为【杀】：真杀 / 龙胆（含龙翎）的闪 / 武圣的红牌
+      const longdan = this.hasLongdan(p);
       const asSha =
         effName === 'sha' ||
-        (effName === 'shan' && !!p.skills.longdan) ||
+        (effName === 'shan' && longdan) ||
         (!!p.skills.wusheng && card.red && effName !== 'sha');
 
+      // 锻戈 1 档：无距离与次数限制
+      const free = !!(p.skills.duange && p.skills.duange.tier >= 1);
+
       if (asSha) {
-        if (this.ctx.shaUsed >= 1 && !p.skills.paoxiao && !recHit) return deny('本回合已使用过【杀】');
-        const reach = recHit ? others : inRange;
+        if (this.ctx.shaUsed >= 1 && !p.skills.paoxiao && !recHit && !free) {
+          return deny('本回合已使用过【杀】');
+        }
+        const reach = recHit || free ? others : inRange;
         if (!reach.length) return deny('攻击范围内没有目标');
         return { ok: true, needTargets: true, targets: reach.map((o) => o.id), reason: '' };
       }
@@ -3265,7 +3526,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           return { ok: true, needTargets: true, targets: withCards.map((o) => o.id), reason: '' };
         }
         case 'shunshou': {
-          const reachable = recHit ? withCards : withCards.filter((o) => this.distance(p, o) <= 1);
+          const reachable =
+            recHit || free ? withCards : withCards.filter((o) => this.distance(p, o) <= 1);
           if (!reachable.length) return deny('距离以内没有可拿的牌');
           return { ok: true, needTargets: true, targets: reachable.map((o) => o.id), reason: '' };
         }
@@ -3339,6 +3601,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       );
       this.lastPlay = { card, by: p.id, targets: targets.map((t) => t.id) };
       this.lastResponse = null;
+      // 龙翎：对其他角色使用牌 → 蓄力点 +1
+      if (targets.some((t) => t && t !== p)) this.llGain(p, 1);
       this.emit();
       await this.pace();
 
@@ -3527,6 +3791,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (!p || !p.alive) return 0;
       const before = p.hp;
       p.hp -= n;
+      this.llGain(p, 1); // 龙翎：失去体力得蓄力点
       this.pushLog(
         `${p.name} 失去 ${before - p.hp} 点体力${cause ? `（${cause}）` : ''}，体力 ${p.hp}/${p.maxHp}`,
         'damage'
@@ -3539,16 +3804,17 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
     /* ---------------------------- 响应打出 ---------------------------- */
 
-    /** 该角色可用于响应的牌（含龙胆 / 武圣转换）。 */
+    /** 该角色可用于响应的牌（含龙胆 / 龙翎 / 武圣转换）。 */
     responseCards(p, need) {
       const out = [];
+      const longdan = this.hasLongdan(p);
       for (const c of p.hand) {
         if (need === 'shan') {
           if (c.name === 'shan') out.push(c);
-          else if (c.name === 'sha' && p.skills.longdan) out.push(c);
+          else if (c.name === 'sha' && longdan) out.push(c);
         } else if (need === 'sha') {
           if (c.name === 'sha') out.push(c);
-          else if (p.skills.longdan && c.name === 'shan') out.push(c);
+          else if (longdan && c.name === 'shan') out.push(c);
           else if (p.skills.wusheng && c.red) out.push(c);
         } else if (need === 'tao') {
           if (c.name === 'tao') out.push(c);
@@ -3563,6 +3829,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
     async askForResponse(p, need, reason) {
       if (!p || !p.alive) return false;
+      // 勤君：在本人出牌之前，先问持勤君者是否代打
+      if (await this.tryQinjun(p, need)) return true;
+
       const needLabel = need === 'shan' ? '闪' : need === 'sha' ? '杀' : '桃';
       let baguaTried = false;
       for (let guard = 0; guard < 8; guard++) {
@@ -3616,7 +3885,6 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         if (!c) return false;
         this.toDiscard(c, p, false);
         this.pushLog(`${p.name} 打出【${c.label}】${c.suit}${c.rank}`, 'response');
-
         // 转换技要标出来：龙胆把杀当闪、武圣把红牌当杀，光看牌面容易误判
         const asLabel = c.name !== need ? `${c.label}（当${needLabel}）` : c.label;
         this.lastResponse = {
@@ -3631,6 +3899,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
         this.emit();
         await this.pace();
+
+        // 锻戈 2 档：打出【杀】/【闪】后，弃置任意角色一张牌（锁定，自动问）
+        if (p.skills.duange && p.skills.duange.tier >= 2 && (need === 'sha' || need === 'shan')) {
+          await this.tryDuangeDiscard(p);
+        }
         return true;
       }
       return false;
@@ -3800,6 +4073,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         }
 
         while (p.alive && p.hp <= 0) {
+          // 勤君：赵云（或任意持勤君者）可以代打【桃】
+          if (await this.tryQinjun(p, 'tao')) {
+            p.hp += 1;
+            this.pushLog(`${p.name} 因【勤君】回复 1 点体力（${p.hp}/${p.maxHp}）`, 'heal');
+            this.emit();
+            await this.pace();
+            continue;
+          }
           const taos = p.hand.filter((c) => c.name === 'tao');
           if (!taos.length) break;
           const choice = await this.ask(p, {
@@ -3949,6 +4230,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       }
       if (p.skills.shishou && !p.skills.shishou.used && p.marks.ming && p.hand.length) {
         await this.activateShishou(p);
+        if (this.over || !p.alive) return;
+      }
+      if (p.skills.longling) {
+        await this.activateLongling(p);
         if (this.over || !p.alive) return;
       }
 
@@ -4273,6 +4558,28 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (req.tag === '誓守') return p.hand.length >= 2;
           if (req.tag === '誓守·回复') return p.marks && p.marks.ming.length > 0 && p.hp < p.maxHp;
 
+          /* ---- 赵云（龙翎） ---- */
+          if (req.tag === '龙翎·牌名') {
+            // 缺什么补什么
+            const has = (n) => p.hand.some((c) => c.name === n);
+            if (!has('sha')) return 'sha';
+            if (!has('shan')) return 'shan';
+            if (p.hp < p.maxHp) return 'tao';
+            return 'shan';
+          }
+          if (req.tag === '龙翎·发动') {
+            // 手里有闲牌、体力够，才烧 2 张换一张基本牌
+            return p.hand.length >= 4 && p.hp >= 3;
+          }
+          if (req.tag === '勤君') {
+            // 只救自己或队友，且体力足够
+            if (p.hp <= 2) return false;
+            const target = m.targetId ? E.get(m.targetId) : null;
+            const self = m.isSelf || target === p;
+            if (self) return true; // 自己缺闪/桃时值得
+            return !!target && E.isAlly(p, target);
+          }
+
           return false;
         }
 
@@ -4283,7 +4590,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (bagua) return 'bagua'; // 先判定，不消耗手牌
           if (req.tag === 'dying') return opts[0].value;
           if (req.tag === 'discard') return opts[0].value;
-          if (req.tag === '九伐·弃牌' || req.tag === '誓守·弃牌') {
+          if (req.tag === '九伐·弃牌' || req.tag === '誓守·弃牌' || req.tag === '龙翎·弃牌') {
             // 弃最没用的那张
             let worst = null;
             let worstV = Infinity;
@@ -5156,6 +5463,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       } else if (key === 'shishou') {
         state = s.used ? '已用' : (lu.marks && lu.marks.ming.length ? `明 ${lu.marks.ming.length}` : '可用');
         cls = s.used ? 'used' : '';
+      } else if (key === 'longling') {
+        state = `${s.charge}/${s.max}`;
+        cls = s.charge > 0 ? '' : 'used';
+      } else if (key === 'qinjun') {
+        state = '被动';
+      } else if (key === 'duange') {
+        state = s.tier >= 3 ? '三档满' : `${s.tier}/3`;
+        cls = s.tier >= 3 ? '' : 'used';
       }
       const recName = key === 'junshi' && lu.flags && lu.flags.record;
       const tipExtra = recName
@@ -5247,6 +5562,25 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       '<path d="M3.5 17.5 9 10l4 5 7.5-9.5"/>' +
       '<path d="M15.5 5.5H21v5.5"/>' +
       '<path d="M3.5 20.5h17" stroke-width="1.3"/>' +
+      '</svg>',
+    longling:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 2.6c3.6 3 5.6 6.4 5.6 9.6a5.6 5.6 0 0 1-11.2 0c0-3.2 2-6.6 5.6-9.6Z"/>' +
+      '<path d="M12 7.5v9.2M9.2 10.8 12 13l2.8-2.2" stroke-width="1.3"/>' +
+      '</svg>',
+    qinjun:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M7.5 12.5V6.2a1.6 1.6 0 0 1 3.2 0v5.1"/>' +
+      '<path d="M10.7 11V8.6a1.6 1.6 0 0 1 3.2 0v2.6"/>' +
+      '<path d="M13.9 11.6V9.8a1.6 1.6 0 0 1 3.2 0v5.4c0 3.2-2.4 5.8-5.6 5.8s-5.6-2.4-5.6-5.4V13a1.5 1.5 0 0 1 3 0"/>' +
+      '</svg>',
+    duange:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M4 19.5h16"/>' +
+      '<path d="M7 19.5v-4h10v4"/>' +
+      '<path d="M12 15.5V6.5"/>' +
+      '<path d="M9 9.2 12 5l3 4.2"/>' +
+      '<path d="M8.2 12.2h7.6" stroke-width="1.3"/>' +
       '</svg>',
   };
 
@@ -5368,6 +5702,32 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           state: s.used ? '本回合已用' : '可用',
           stateCls: s.used ? 'used' : '',
           meta: `「明」${ming} 张 · 可弃至多 ${Math.min(9, lu.skills.jiufa ? lu.skills.jiufa.uses : 0)} 张`,
+        });
+      } else if (key === 'longling') {
+        const bar = Array.from({ length: s.max }, (_, i) => `<i class="${i < s.charge ? 'on' : ''}"></i>`).join('');
+        html += skillCardHtml(key, {
+          state: `蓄力 ${s.charge}/${s.max}`,
+          stateCls: s.charge > 0 ? '' : 'used',
+          meta: `累计消耗 ${s.spent} 点 · 下次耗 1 点可弃两张牌换任意基本牌`,
+          bar,
+        });
+      } else if (key === 'qinjun') {
+        const can = lu.skills.longling && lu.skills.longling.charge >= 2;
+        html += skillCardHtml(key, {
+          state: can ? '可发动' : '蓄力不足',
+          stateCls: can ? '' : 'used',
+          meta: '任意角色（含自己）需要基本牌时，耗 2 点代打；你会失 1 点体力并亮牌补手。',
+        });
+      } else if (key === 'duange') {
+        const need = [7, 14, 21];
+        const spent = lu.skills.longling ? lu.skills.longling.spent : 0;
+        const next = s.tier < 3 ? need[s.tier] : null;
+        html += skillCardHtml(key, {
+          state: s.tier >= 3 ? '三档满' : `第 ${s.tier}/3 档`,
+          stateCls: s.tier >= 3 ? '' : 'used',
+          meta:
+            `已累计消耗 ${spent} 点` +
+            (next == null ? '　已解锁全部效果' : `　距离下一档还需 ${next - spent} 点`),
         });
       } else {
         html += skillCardHtml(key, { state: '被动' });
