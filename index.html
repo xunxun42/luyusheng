@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 19:34 · 97ac396">
+<meta name="x-build" content="2026-10-17 19:41 · c00a0c4">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3994,6 +3994,97 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.emit();
     }
 
+    /** 龙霖：当前可选的「霖」基本牌名（受每回合出杀/酒次数限制约束） */
+    linBasicOptions(p) {
+      const out = [];
+      const noLimit =
+        !!p.skills.paoxiao ||
+        (this.weaponOf(p) === 'zhuge') ||
+        (p.skills.duange && p.skills.duange.tier >= 1) ||
+        (p.skills.junshi && this.matchesRecord(p, { name: 'sha' }));
+      const shaUsed = this.ctx ? this.ctx.shaUsed : 0;
+      if (noLimit || shaUsed < 1) {
+        const foes = this.aliveOthers(p).filter((o) => this.distance(p, o) <= this.rangeOf(p));
+        if (foes.length) out.push({ label: '【杀】', value: 'sha' });
+      }
+      if (p.hp < p.maxHp) out.push({ label: '【桃】', value: 'tao' });
+      const jiuUsed = this.ctx ? this.ctx.jiuUsed || 0 : 0;
+      if (jiuUsed < 1) out.push({ label: '【酒】', value: 'jiu' });
+      return out;
+    }
+
+    /** 龙霖：出牌阶段把「霖」当基本牌使用 */
+    async useLin(p) {
+      if (!p.skills.longlin || !p.alive || this.over) return;
+      let guard = 0;
+      while (p.marks.lin.length && guard++ < 6 && !this.over) {
+        const yes = await this.confirm(
+          p,
+          `【龙霖】把「霖」当基本牌使用？（还剩 ${p.marks.lin.length} 张）`,
+          '龙霖·使用',
+          { lin: p.marks.lin.length }
+        );
+        if (!yes) return;
+
+        let card = p.marks.lin[0];
+        if (p.marks.lin.length > 1 && !p.isAI) {
+          const id = await this.ask(p, {
+            kind: 'confirm',
+            tag: '龙霖·选霖',
+            text: '用哪张「霖」？',
+            options: p.marks.lin.map((c) => ({
+              label: `【${c.label}】${c.suit}${c.rank}`,
+              value: c.id,
+            })),
+            cancel: true,
+            cancelLabel: '取消',
+          });
+          if (!id) return;
+          card = p.marks.lin.find((c) => c.id === id) || card;
+        }
+
+        const name = await this.ask(p, {
+          kind: 'confirm',
+          tag: '龙霖·牌名',
+          text: `把「${card.label}」当哪张基本牌使用？（【闪】只能在响应时打出）`,
+          options: this.linBasicOptions(p),
+          cancel: true,
+          cancelLabel: '取消',
+        });
+        if (!name) return;
+
+        p.marks.lin.splice(p.marks.lin.indexOf(card), 1);
+        this.toDiscard(card, p, false);
+        this.virtSeq = (this.virtSeq || 0) + 1;
+        const v = {
+          id: 'virt-lin-' + this.virtSeq,
+          virtual: true,
+          name,
+          label: NAME_LABEL[name] || name,
+          type: 'basic',
+          suit: '',
+          rank: '',
+          red: false,
+        };
+
+        let targets = [];
+        if (name === 'sha') {
+          const foes = this.aliveOthers(p).filter((o) => this.distance(p, o) <= this.rangeOf(p));
+          if (!foes.length) {
+            this.pushLog('【龙霖】攻击范围内没有目标，视为使用落空。', 'system');
+            return;
+          }
+          targets = [foes[0].id];
+        }
+
+        this.pushLog(`【龙霖】${p.name} 以「霖」当【${v.label}】使用。`, 'skill');
+        this.emit();
+        await this.pace();
+        await this.useCard(p, v, targets);
+        if (this.over || !p.alive) return;
+      }
+    }
+
     /**
      * 龙霖：失去牌时亮出牌堆顶一张，类别相同则盖置为「霖」。
      */
@@ -4798,6 +4889,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         this.pushLog(`${target.name} 没有可指定的牌，效果落空。`, 'system');
         return;
       }
+      // 龙霖：被人拆牌 / 拿牌也算失去牌
+      await this.tryLonglin(target, card);
       if (mode === 'gain') {
         p.hand.push(card);
         this.pushLog(`${p.name} 获得 ${target.name} 的【${card.label}】`, 'steal');
@@ -5451,6 +5544,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         await this.activateLinmai(p);
         if (this.over || !p.alive) return;
       }
+      if (p.skills.longlin && p.marks.lin.length) {
+        await this.useLin(p);
+        if (this.over || !p.alive) return;
+      }
       if (p.skills.sheji) {
         await this.activateSheji(p);
         if (this.over || !p.alive) return;
@@ -5942,6 +6039,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             return 2;
           }
           if (req.tag === '龙霖') return true;
+          if (req.tag === '龙霖·使用') return p.marks.lin.length > 0;
+          if (req.tag === '龙霖·牌名') {
+            const opts = (req.options || []).map((o) => o.value);
+            if (opts.includes('sha')) return 'sha';
+            if (opts.includes('tao')) return 'tao';
+            if (opts.includes('jiu')) return 'jiu';
+            return null;
+          }
 
           /* ---- 吕布 ---- */
           if (req.tag === '射戟·发动') return p.hand.length >= 3;
