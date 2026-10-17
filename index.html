@@ -1355,16 +1355,20 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   .stage-emblem::before { width: 170px; height: 170px; }
   .stage::before { inset: 8px; }
 
-  /* 提示条：贴住牌桌底部，内部可滚，按钮加大 */
+  /* 提示条：贴住牌桌底部，内部可滚，按钮加大
+     注意必须把基础样式的 left:50% + translateX(-50%) 居中复位掉，
+     否则会从 left:6px 再往左挪半个身位，按钮直接被推出屏幕（手机上的“卡住”就是这个） */
   .prompt {
     left: 6px;
     right: 6px;
     bottom: 6px;
     width: auto;
+    transform: none;
     max-height: 78%;
     overflow-y: auto;
     padding: 10px 12px;
     animation: none;
+    z-index: 8;
   }
   .prompt-text { font-size: 12.5px; line-height: 1.6; }
   .prompt-actions { gap: 6px; }
@@ -1530,6 +1534,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     left: 6px;
     right: 6px;
     bottom: calc(6px + env(safe-area-inset-bottom));
+    width: auto;
+    transform: none;
     max-height: 74vh;
   }
   .turn-hint { display: none; }
