@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-18 00:09 · 0257e54">
+<meta name="x-build" content="2026-10-18 04:14 · ad3066b">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2168,6 +2168,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     { name: 'taoyuan',  label: '桃园结义', type: 'trick', count: 1,  suits: ['♥'] },
     { name: 'wugu',     label: '五谷丰登', type: 'trick', count: 2,  suits: ['♥'] },
     { name: 'jiedao',   label: '借刀杀人', type: 'trick', count: 2,  suits: ['♣'] },
+    { name: 'lebu',     label: '乐不思蜀', type: 'trick', delayed: true, count: 3, suits: ['♣', '♠'] },
 
     { name: 'qinggang', label: '青釭剑',   type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
     { name: 'cixiong',  label: '雌雄双股剑', type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
@@ -2210,6 +2211,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     taoyuan: '所有角色各回复 1 点体力（不超过上限）。',
     wugu: '亮出牌堆顶 X 张牌（X 为存活角色数），从你开始每人依次选一张获得。',
     jiedao: '令一名装备了武器的角色对其攻击范围内、由你指定的另一名角色使用一张【杀】，否则其将武器交给你。',
+    lebu: '延时锦囊：置于一名角色的判定区。其判定阶段判定，若结果不为♥，跳过其出牌阶段。',
     qinggang: '武器，攻击范围 2。你的【杀】无视目标的防具。',
     cixiong: '武器，攻击范围 2。你对异性角色使用【杀】时，对方需弃一张牌，否则你摸一张。',
     zhangba: '武器，攻击范围 3。你可以将两张手牌当【杀】使用或打出。',
@@ -2415,6 +2417,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       title: '登峰造极',
       maxHp: 5,
       skills: ['feiting', 'sheji', 'guowu', 'dubu'],
+    },
+    zhugezhan: {
+      key: 'zhugezhan',
+      name: '诸葛瞻',
+      kingdom: '蜀',
+      title: '江山如故',
+      maxHp: 4,
+      skills: ['sanzui', 'yuyin'], // 绝明在罪标记归零后动态获得
     },
   };
 
@@ -2756,6 +2766,37 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         '2. 你获得【享乐】。\n' +
         '3. 出牌阶段限一次，你可将手牌数调整至体力上限。',
     },
+    sanzui: {
+      name: '三罪',
+      kind: '限定技',
+      tagline: '三枚罪，三条路，罪尽得绝明',
+      when: '出牌阶段',
+      text:
+        '游戏开始时，你获得三枚罪标记。出牌阶段，你可以失去一点体力或移去一枚罪，视为发动其中一项：\n' +
+        '1. 你获得【制衡】直到回合结束；\n' +
+        '2. 弃置一张牌，从牌堆获得一张【乐不思蜀】；\n' +
+        '3. 下一次受到伤害时，你回复一点体力并摸2张牌。\n' +
+        '若你的罪标记不因此归零，该技能视为未发动过，否则你获得【绝明】。',
+    },
+    yuyin: {
+      name: '馀荫',
+      kind: '锁定技',
+      tagline: '多摸一张，空手时偷看牌堆顶五张',
+      when: '摸牌阶段 / 手牌里没有基本牌时',
+      text:
+        '摸牌阶段你多摸一张牌。\n' +
+        '当你手牌中没有基本牌时，你可以观看牌堆顶五张牌，使用或打出其中的基本牌。',
+    },
+    jueiming: {
+      name: '绝明',
+      kind: '主动技',
+      tagline: '拼点，赢了白嫖一张决斗',
+      when: '每轮限 2 次',
+      text:
+        '每轮限2次，你可以选择一名其他角色，你与其失去一点体力并拼点：\n' +
+        '若你赢，你「馀荫」的观看范围+2直到本轮结束，然后你视为对其使用一张【决斗】；\n' +
+        '否则其必须对你使用手牌中所有的【杀】。',
+    },
     paoxiao: {
       name: '咆哮',
       kind: '锁定技',
@@ -2853,10 +2894,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (key === 'sheji') p.skills.sheji = { perTurn: 0 };
       if (key === 'guowu') p.skills.guowu = { used: 0 };
       if (key === 'dubu') p.skills.dubu = { kills: 0, tier: 0 };
+      if (key === 'sanzui') p.skills.sanzui = { sins: 3, armed: true, buff: false };
+      if (key === 'yuyin') p.skills.yuyin = { bonus: 0 };
+      if (key === 'jueiming') p.skills.jueiming = { used: 0 };
     });
     p.flags.record = null; // 军势「记录」的牌名
     // 武将牌上的附着牌（姜维的「明」；后续诸葛亮的星、赵云的霖也放这里）
     p.marks = { ming: [], star: [], lin: [] };
+    // 判定区（延时锦囊，如【乐不思蜀】）
+    p.judgeZone = [];
     return p;
   }
 
@@ -4269,6 +4315,319 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     }
 
 
+    /* ---------------------- 判定区（延时锦囊） ---------------------- */
+
+    async phaseJudge(p) {
+      if (!p.judgeZone || !p.judgeZone.length) return;
+      if (this.ctx) this.ctx.phase = 'judge';
+      this.emit();
+      for (const jc of p.judgeZone.slice()) {
+        const j = this.judge(p, jc.label);
+        if (!j) break;
+        if (jc.name === 'lebu') {
+          if (j.suit !== '♥') {
+            p.flags.skipPlay = true;
+            this.pushLog(`【乐不思蜀】判定 ${j.suit}${j.rank}：${p.name} 跳过出牌阶段。`, 'skill');
+          } else {
+            this.pushLog(`【乐不思蜀】判定 ♥${j.rank}：生效失败。`, 'skill');
+          }
+        }
+        p.judgeZone = p.judgeZone.filter((x) => x !== jc);
+        this.toDiscard(jc, p, false);
+        this.emit();
+        await this.pace();
+      }
+    }
+
+    /* ------------------- 诸葛瞻：三罪 / 馀荫 / 绝明 ------------------- */
+
+    /** 拼点用的点数（A 最大） */
+    pindianValue(c) {
+      if (!c) return 0;
+      const r = String(c.rank);
+      if (r === 'A') return 14;
+      if (r === 'K') return 13;
+      if (r === 'Q') return 12;
+      if (r === 'J') return 11;
+      const n = parseInt(r, 10);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    async pickPindianCard(p) {
+      if (!p.hand.length) return null;
+      if (p.isAI) {
+        let best = p.hand[0];
+        for (const c of p.hand) if (this.pindianValue(c) > this.pindianValue(best)) best = c;
+        return best;
+      }
+      const id = await this.ask(p, {
+        kind: 'playCard',
+        tag: '拼点',
+        text: '【拼点】选择一张手牌亮出（点数大者胜，A 最大）',
+        options: p.hand.map((c) => ({
+          label: `【${c.label}】${c.suit}${c.rank}`,
+          value: c.id,
+          cardId: c.id,
+        })),
+        cancel: false,
+      });
+      return this.handCard(p, id);
+    }
+
+    /** 拼点：返回 1 = a 赢，-1 = b 赢，0 = 平或无法拼 */
+    async pindian(a, b) {
+      const ca = await this.pickPindianCard(a);
+      const cb = await this.pickPindianCard(b);
+      if (!ca || !cb) return 0;
+      // 先离手再进弃牌堆，否则牌会凭空多出来
+      this.takeFromHand(a, ca.id);
+      this.takeFromHand(b, cb.id);
+      this.toDiscard(ca, a, false);
+      this.toDiscard(cb, b, false);
+      const va = this.pindianValue(ca);
+      const vb = this.pindianValue(cb);
+      this.pushLog(
+        `【拼点】${a.name}【${ca.label}】${ca.rank}（${va}） vs ${b.name}【${cb.label}】${cb.rank}（${vb}）→ ` +
+          (va > vb ? `${a.name} 胜` : va < vb ? `${b.name} 胜` : '平局'),
+        'skill'
+      );
+      this.emit();
+      if (va > vb) return 1;
+      if (va < vb) return -1;
+      return 0;
+    }
+
+    /** 三罪：失去 1 体力或移 1 枚罪，三选一 */
+    async activateSanzui(p) {
+      const s = p.skills.sanzui;
+      if (!s || !s.armed || !p.alive || this.over) return;
+      const canSin = s.sins > 0;
+      const canHp = p.hp > 1;
+      if (!canSin && !canHp) return;
+
+      let useSin = canSin;
+      if (canSin && canHp) {
+        const v = await this.ask(p, {
+          kind: 'confirm',
+          tag: '三罪·代价',
+          text: `【三罪】发动代价：失去1点体力，还是移去1枚罪？\n（罪 ${s.sins} 枚，体力 ${p.hp}/${p.maxHp}）`,
+          options: [
+            { label: '失去 1 点体力', value: 'hp' },
+            { label: `移去 1 枚罪（剩 ${s.sins - 1}）`, value: 'sin' },
+          ],
+          cancel: true,
+          cancelLabel: '不发动',
+        });
+        if (!v) return;
+        useSin = v === 'sin';
+      }
+
+      const opt = await this.ask(p, {
+        kind: 'confirm',
+        tag: '三罪·选项',
+        text: '视为发动哪一项？',
+        options: [
+          { label: '① 获得【制衡】直到回合结束', value: 1 },
+          { label: '② 弃1张牌，从牌堆获得【乐不思蜀】', value: 2 },
+          { label: '③ 下次受伤时回1点并摸2张', value: 3 },
+        ],
+        cancel: true,
+        cancelLabel: '取消',
+      });
+      if (!opt) return;
+
+      if (useSin) s.sins--;
+      else await this.loseHp(p, 1, '三罪');
+      if (!p.alive || this.over) return;
+
+      if (opt === 1) {
+        p.flags.zhiheng = true;
+        this.pushLog(`【三罪①】${p.name} 获得【制衡】直到回合结束。`, 'skill');
+      } else if (opt === 2) {
+        const dropped = await this.discardFromHand(p, 1, '三罪·弃牌', '【三罪②】弃置一张牌');
+        if (dropped >= 1) {
+          const idx = this.deck.findIndex((c) => c.name === 'lebu');
+          if (idx >= 0) {
+            const c = this.deck.splice(idx, 1)[0];
+            p.hand.push(c);
+            this.pushLog(`【三罪②】${p.name} 从牌堆获得【乐不思蜀】。`, 'skill');
+          } else {
+            this.pushLog('【三罪②】牌堆里没有【乐不思蜀】了。', 'system');
+          }
+        }
+      } else {
+        s.buff = true;
+        this.pushLog(`【三罪③】${p.name} 下次受伤时将回复 1 点并摸 2 张。`, 'skill');
+      }
+      this.emit();
+
+      if (s.sins === 0) {
+        s.armed = false;
+        p.skills.jueiming = p.skills.jueiming || { used: 0 };
+        this.pushLog(`【三罪】罪标记归零，${p.name} 获得【绝明】。`, 'skill');
+      } else {
+        this.pushLog(`【三罪】罪标记未归零（${s.sins} 枚），此技能视为未发动过。`, 'skill');
+      }
+      this.emit();
+    }
+
+    /** 制衡：弃任意张牌，摸等量的牌 */
+    async activateZhiheng(p) {
+      if (!p.flags.zhiheng || !p.alive || this.over) return;
+      if (!p.hand.length) return;
+      const pick = await this.ask(p, {
+        kind: 'confirm',
+        tag: '制衡·确认',
+        text: `【制衡】弃置任意张手牌，然后摸等量的牌。（手牌 ${p.hand.length} 张，可点「不弃了」结束）`,
+        options: [{ label: '开始选牌', value: true }],
+        cancel: true,
+        cancelLabel: '不弃了',
+      });
+      if (!pick) {
+        p.flags.zhiheng = false;
+        return;
+      }
+      let count = 0;
+      for (let i = 0; i < 30 && p.hand.length; i++) {
+        let card = null;
+        if (p.isAI) card = this.ai ? this.ai.pickDiscard(this, p) : p.hand[0];
+        else {
+          const id = await this.ask(p, {
+            kind: 'playCard',
+            tag: '制衡·弃牌',
+            text: `【制衡】弃置第 ${i + 1} 张（点「完成」结束）`,
+            options: p.hand.map((c) => ({
+              label: `【${c.label}】${c.suit}${c.rank}`,
+              value: c.id,
+              cardId: c.id,
+            })),
+            cancel: true,
+            cancelLabel: '完成',
+          });
+          card = id ? this.handCard(p, id) : null;
+          if (!card) break;
+        }
+        if (!card) break;
+        this.takeFromHand(p, card.id);
+        this.toDiscard(card, p, true);
+        count++;
+        this.emit();
+      }
+      if (count) {
+        await this.draw(p, count);
+        this.pushLog(`【制衡】${p.name} 弃置 ${count} 张，摸 ${count} 张。`, 'skill');
+        this.emit();
+      }
+    }
+
+    /** 馀荫：手牌没有基本牌时，观看牌堆顶 5 张并使用其中的基本牌 */
+    async activateYuyin(p) {
+      if (!p.skills.yuyin || !p.alive || this.over) return;
+      if (p.hand.some((c) => c.type === 'basic')) {
+        this.pushLog('【馀荫】手牌里还有基本牌，不能发动。', 'system');
+        return;
+      }
+      const n = 5 + (p.skills.yuyin.bonus || 0);
+      const top = this.deck.slice(-n).reverse(); // 牌堆顶往下
+      if (!top.length) return;
+      this.pushLog(
+        `【馀荫】观看牌堆顶 ${top.length} 张：${top.map((c) => `【${c.label}】${c.rank}`).join('')}`,
+        'skill'
+      );
+      this.emit();
+
+      const basics = top.filter((c) => c.type === 'basic');
+      if (!basics.length) {
+        this.pushLog('【馀荫】其中没有基本牌。', 'system');
+        return;
+      }
+
+      for (let guard = 0; guard < 5 && !this.over; guard++) {
+        const pool = top.filter((c) => c.type === 'basic' && this.deck.includes(c) && p.alive);
+        if (!pool.length) break;
+        let pick = null;
+        if (p.isAI) {
+          pick = pool.find((c) => c.name === 'sha') || pool[0];
+        } else {
+          const id = await this.ask(p, {
+            kind: 'confirm',
+            tag: '馀荫·选牌',
+            text: '使用或打出其中的哪张基本牌？（点「结束」停止）',
+            options: pool.map((c) => ({ label: `【${c.label}】${c.suit}${c.rank}`, value: c.id })),
+            cancel: true,
+            cancelLabel: '结束',
+          });
+          if (!id) break;
+          pick = pool.find((c) => c.id === id) || null;
+        }
+        if (!pick) break;
+        const di = this.deck.lastIndexOf(pick);
+        if (di >= 0) this.deck.splice(di, 1);
+
+        let targets = [];
+        if (pick.name === 'sha') {
+          const foes = this.aliveOthers(p).filter((o) => this.distance(p, o) <= this.rangeOf(p));
+          if (!foes.length) {
+            this.toDiscard(pick, p, false);
+            continue;
+          }
+          targets = [foes[0].id];
+        }
+        this.pushLog(`【馀荫】${p.name} 使用【${pick.label}】。`, 'skill');
+        this.emit();
+        await this.useCard(p, pick, targets);
+        if (!p.alive) return;
+      }
+    }
+
+    /** 绝明：拼点 + 决斗 */
+    async activateJueiming(p) {
+      const j = p.skills.jueiming;
+      if (!j || j.used >= 2 || !p.alive || this.over) return;
+      const others = this.aliveOthers(p);
+      if (!others.length) return;
+      const t = await this.pickTarget(p, others, `【绝明】选择拼点的角色（本轮已用 ${j.used}/2）`, '绝明·目标');
+      if (!t) return;
+
+      j.used++;
+      await this.loseHp(p, 1, '绝明');
+      if (!p.alive || this.over) return;
+      await this.loseHp(t, 1, '绝明');
+      if (!t.alive || this.over) return;
+
+      const win = await this.pindian(p, t);
+      if (win === 1) {
+        p.skills.yuyin.bonus = (p.skills.yuyin.bonus || 0) + 2;
+        this.pushLog(`【绝明】${p.name} 拼点获胜：馀荫观看范围 +2（本轮）。`, 'skill');
+        this.emit();
+        this.virtSeq = (this.virtSeq || 0) + 1;
+        const v = {
+          id: 'virt-jueiming-' + this.virtSeq,
+          virtual: true,
+          name: 'juedou',
+          label: '决斗',
+          type: 'trick',
+          suit: '',
+          rank: '',
+          red: false,
+        };
+        this.pushLog(`【绝明】${p.name} 视为对 ${t.name} 使用【决斗】。`, 'skill');
+        this.emit();
+        await this.useCard(p, v, [t.id]);
+      } else if (win === -1) {
+        this.pushLog(`【绝明】${t.name} 拼点获胜：须对 ${p.name} 使用手牌中所有的【杀】。`, 'skill');
+        this.emit();
+        const shas = t.hand.filter((c) => c.name === 'sha' && !c.noLimit);
+        for (const sha of shas.slice()) {
+          if (this.over || !t.alive || !p.alive) break;
+          if (!t.hand.includes(sha)) continue;
+          await this.useCard(t, sha, [p.id]);
+        }
+      }
+      this.emit();
+    }
+
+
     /* ------------------------------ 摸牌 ------------------------------ */
 
     reshuffle() {
@@ -4433,6 +4792,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           const armed = others.filter((o) => o.equips.weapon);
           if (!armed.length) return deny('没有装备武器的角色');
           return { ok: true, needTargets: true, targets: armed.map((o) => o.id), reason: '' };
+        }
+        case 'lebu': {
+          // 持重：不能成为延时锦囊牌的目标
+          const ok = others.filter((o) => !o.skills.chizhong);
+          if (!ok.length) return deny('没有可作为目标的角色');
+          return { ok: true, needTargets: true, targets: ok.map((o) => o.id), reason: '' };
         }
         default:
           if (card.type === 'equip') return { ok: true, needTargets: false, targets: [], reason: '' };
@@ -4859,6 +5224,16 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             pool.forEach((c) => this.toDiscard(c, p, false));
             break;
           }
+          case 'lebu': {
+            const t = targets[0];
+            if (!t || !t.alive) break;
+            card.placed = true;
+            t.judgeZone = t.judgeZone || [];
+            t.judgeZone.push(card);
+            this.pushLog(`【乐不思蜀】置于 ${t.name} 的判定区。`, 'skill');
+            this.emit();
+            break;
+          }
           case 'jiedao': {
             const armed = targets[0];
             if (!armed || !armed.alive || !armed.equips.weapon) break;
@@ -4904,10 +5279,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         }
       }
 
-      // 虚拟牌（武库复制出来的）本来就不存在于牌堆，不能进弃牌堆，否则破坏牌数守恒
-      // 被归心收走的伤害牌不能再进弃牌堆；但标记用完必须清掉，
-      // 否则这张牌以后每次被使用都会「消失」
-      if (!card.virtual && !card.gainedBy) this.toDiscard(card, p, false);
+      // 虚拟牌 / 被归心收走 / 已放进判定区（延时锦囊）的牌都不进弃牌堆
+      if (!card.virtual && !card.gainedBy && !card.placed) this.toDiscard(card, p, false);
       if (card.gainedBy) card.gainedBy = null;
       // 龙霖：失去牌后可以亮出牌堆顶攒「霖」
       if (!card.virtual) await this.tryLonglin(p, card);
@@ -5218,6 +5591,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       );
       this.emit();
       await this.pace();
+
+      // 三罪③：下一次受到伤害时回复 1 点并摸 2 张
+      if (t.alive && t.skills.sanzui && t.skills.sanzui.buff) {
+        t.skills.sanzui.buff = false;
+        this.pushLog(`【三罪③】${t.name} 回复 1 点体力并摸 2 张。`, 'skill');
+        this.heal(t, 1, '三罪');
+        await this.draw(t, 2);
+        this.emit();
+      }
 
       // 归心：受到伤害后得「疑」、收伤害牌、摸一张
       if (t.alive && t.skills.guixin) await this.onGuixinDamaged(t, evt);
@@ -5637,6 +6019,18 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (this.weaponOf(p) === 'zhangba' && p.hand.length >= 2) {
         out.push({ key: 'zhangba', label: '丈八蛇矛', note: '弃2当杀', tone: 'silver' });
       }
+      if (s.sanzui && s.sanzui.armed && (s.sanzui.sins > 0 || p.hp > 1)) {
+        out.push({ key: 'sanzui', label: '三罪', note: `罪${s.sanzui.sins}`, tone: 'gold' });
+      }
+      if (p.flags.zhiheng) {
+        out.push({ key: 'zhiheng', label: '制衡', note: '弃N摸N', tone: 'cyan' });
+      }
+      if (s.yuyin && !p.hand.some((c) => c.type === 'basic') && this.deck.length) {
+        out.push({ key: 'yuyin', label: '馀荫', note: `看${5 + (s.yuyin.bonus || 0)}张`, tone: 'green' });
+      }
+      if (s.jueiming && s.jueiming.used < 2) {
+        out.push({ key: 'jueiming', label: '绝明', note: `本轮${s.jueiming.used}/2`, tone: 'violet' });
+      }
       return out;
     }
 
@@ -5653,12 +6047,24 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         case 'sheji': return this.activateSheji(p);
         case 'dubu': return this.activateDubu(p);
         case 'zhangba': return this.activateZhangba(p);
+        case 'sanzui': return this.activateSanzui(p);
+        case 'zhiheng': return this.activateZhiheng(p);
+        case 'yuyin': return this.activateYuyin(p);
+        case 'jueiming': return this.activateJueiming(p);
         default:
           return null;
       }
     }
 
     async phasePlay(p) {
+      // 判定区的【乐不思蜀】生效 → 跳过出牌阶段
+      if (p.flags.skipPlay) {
+        p.flags.skipPlay = false;
+        this.pushLog(`【乐不思蜀】${p.name} 跳过出牌阶段。`, 'skill');
+        this.emit();
+        await this.pace();
+        return;
+      }
       if (this.ctx) {
         this.ctx.phase = 'play';
         this.ctx.shaUsed = 0;
@@ -5683,6 +6089,13 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             () => this.weaponOf(p) === 'zhangba' && p.hand.length >= 2 && !p.hand.some((c) => c.name === 'sha'),
             () => this.activateZhangba(p),
           ],
+          [() => p.skills.sanzui && p.skills.sanzui.armed, () => this.activateSanzui(p)],
+          [() => !!p.flags.zhiheng, () => this.activateZhiheng(p)],
+          [
+            () => p.skills.yuyin && !p.hand.some((c) => c.type === 'basic') && this.deck.length > 0,
+            () => this.activateYuyin(p),
+          ],
+          [() => p.skills.jueiming && p.skills.jueiming.used < 2, () => this.activateJueiming(p)],
         ];
         for (const [cond, run] of seq) {
           if (!cond()) continue;
@@ -5774,6 +6187,13 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         this.emit();
       }
 
+      // 三罪①：制衡只持续到这个回合结束
+      if (p.flags.zhiheng) {
+        p.flags.zhiheng = false;
+        this.pushLog(`【制衡】${p.name} 的【制衡】到期。`, 'system');
+        this.emit();
+      }
+
       // 江翊：每个角色的结束阶段，陆抗都可以发一次五谷
       const lkAng = this.players.find(
         (x) => x.alive && x.skills.jiangyi && x.skills.jiangyi.tao >= 2
@@ -5835,6 +6255,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       await this.phaseStart(p);
       if (this.over || !p.alive) return;
 
+      // 判定阶段（延时锦囊）
+      await this.phaseJudge(p);
+      if (this.over || !p.alive) return;
+
       if (this.ctx) this.ctx.phase = 'draw';
       this.emit();
       // 稷成②：跳过下个摸牌阶段
@@ -5846,7 +6270,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       } else {
         // 夷越第 1 档：摸牌阶段多摸 2 张
         const yiyueBonus = p.skills.yiyue && p.skills.yiyue.tier >= 1 ? 2 : 0;
-        await this.draw(p, 2 + (p.skills.yingzi ? 1 : 0) + yiyueBonus);
+        await this.draw(p, 2 + (p.skills.yingzi ? 1 : 0) + yiyueBonus + (p.skills.yuyin ? 1 : 0));
       }
       if (this.over || !p.alive) return;
 
@@ -5887,6 +6311,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             p.skills.jieshuang.used = 0;
             p.skills.jieshuang.limit = 1;
           }
+          // 绝明：每轮限 2 次；馀荫：观看范围 +2「直到本轮结束」
+          if (p.skills.jueiming) p.skills.jueiming.used = 0;
+          if (p.skills.yuyin) p.skills.yuyin.bonus = 0;
         });
         this.pushLog(`══ 第 ${this.round} 轮开始 ══`, 'turn');
       }
@@ -5947,6 +6374,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         if (p.marks) {
           n += p.marks.ming.length + p.marks.star.length + p.marks.lin.length;
         }
+        if (p.judgeZone) n += p.judgeZone.length;
       }
       return n;
     }
@@ -6162,6 +6590,23 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (req.tag === '享乐') return p.hand.length >= 3;
           if (req.tag === '独步·调整') return true;
 
+          /* ---- 诸葛瞻 ---- */
+          if (req.tag === '三罪·代价') {
+            // 血多就卖血，保住罪标记
+            return p.hp >= 3 ? 'hp' : 'sin';
+          }
+          if (req.tag === '三罪·选项') {
+            if (p.hp <= 2) return 3; // 濒危时留个回血
+            const foes = E.aliveOthers(p);
+            return foes.length ? 2 : 1;
+          }
+          if (req.tag === '制衡·确认') return p.hand.length >= 2;
+          if (req.tag === '馀荫·选牌') {
+            const sha = opts.find((o) => o.value && String(o.label).includes('杀'));
+            return sha ? sha.value : (opts[0] ? opts[0].value : null);
+          }
+          if (req.tag === '绝明·目标') return true;
+
           return false;
         }
 
@@ -6172,6 +6617,35 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (bagua) return 'bagua'; // 先判定，不消耗手牌
           if (req.tag === 'dying') return opts[0].value;
           if (req.tag === 'discard') return opts[0].value;
+          if (req.tag === '拼点' || req.tag === '制衡·弃牌') {
+            // 拼点出最大的牌；制衡弃最没用的
+            let best = null;
+            let bestV = req.tag === '拼点' ? -1 : Infinity;
+            for (const o of opts) {
+              const c = E.handCard(p, o.value);
+              if (!c) continue;
+              const v = req.tag === '拼点' ? E.pindianValue(c) : cardValue(c);
+              if (req.tag === '拼点' ? v > bestV : v < bestV) {
+                bestV = v;
+                best = o;
+              }
+            }
+            return best ? best.value : null;
+          }
+          if (req.tag === '三罪·弃牌') {
+            let worst = null;
+            let worstV = Infinity;
+            for (const o of opts) {
+              const c = E.handCard(p, o.value);
+              if (!c) continue;
+              const v = cardValue(c);
+              if (v < worstV) {
+                worstV = v;
+                worst = o;
+              }
+            }
+            return worst ? worst.value : null;
+          }
           if (req.tag === '稷成·弃牌') {
             let worst = null;
             let worstV = Infinity;
@@ -7112,6 +7586,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       } else if (key === 'dubu') {
         state = s.tier >= 3 ? '三档满' : `${s.tier}/3`;
         cls = s.tier >= 3 ? '' : 'used';
+      } else if (key === 'sanzui') {
+        state = s.armed ? `罪 ${s.sins}` : '已尽';
+        cls = s.armed ? '' : 'used';
+      } else if (key === 'yuyin') {
+        state = s.bonus ? `看 ${5 + s.bonus} 张` : '看 5 张';
+      } else if (key === 'jueiming') {
+        state = `本轮 ${s.used}/2`;
+        cls = s.used >= 2 ? 'used' : '';
       }
       const recName = key === 'junshi' && lu.flags && lu.flags.record;
       const tipExtra = recName
@@ -7296,7 +7778,22 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       '<path d="M14.4 4.4 19.6 9.6" stroke-width="1.3"/>' +
       '<path d="M4.4 13.4 10.6 19.6"/>' +
       '</svg>',
-    dubu:
+    sanzui:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M6 4.4h12l-6 7.4 6 7.8H6"/>' +
+      '<path d="M9.4 8.6h5.2M9.4 15.4h5.2" stroke-width="1.2"/>' +
+      '</svg>',
+    yuyin:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 3.2c3.6 2 5.4 5 5.4 8.6 0 3.4-2.4 6.6-5.4 9-3-2.4-5.4-5.6-5.4-9 0-3.6 1.8-6.6 5.4-8.6Z"/>' +
+      '<path d="M12 8v8M8.4 12h7.2" stroke-width="1.2"/>' +
+      '</svg>',
+    jueiming:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M4.6 19.4 19.4 4.6"/>' +
+      '<path d="M8.2 4.6h11.2v11.2" stroke-width="1.3"/>' +
+      '<path d="M4.6 8.2v11.2h11.2" stroke-width="1.3"/>' +
+      '</svg>',    dubu:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M6 20V9.4M12 20V4.6M18 20v-7.4"/>' +
       '<path d="M4 20h16" stroke-width="1.3"/>' +
@@ -7535,6 +8032,25 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           state: s.tier >= 3 ? '三档满' : `第 ${s.tier}/3 档`,
           stateCls: s.tier >= 3 ? '' : 'used',
           meta: `击杀 ${s.kills} 人 · ①无双 ②享乐 ③出牌阶段限一次把手牌数调整为体力上限`,
+        });
+      } else if (key === 'sanzui') {
+        html += skillCardHtml(key, {
+          state: s.armed ? `罪 ${s.sins} 枚` : '罪已尽',
+          stateCls: s.armed ? '' : 'used',
+          meta: '出牌阶段：失1体力或移1枚罪 → ①制衡到回合结束 ②弃1牌换【乐不思蜀】 ③下次受伤回1摸2。罪归零则获得【绝明】。',
+        });
+      } else if (key === 'yuyin') {
+        const can = true;
+        html += skillCardHtml(key, {
+          state: `观看 ${5 + (s.bonus || 0)} 张`,
+          stateCls: can ? '' : 'used',
+          meta: '摸牌阶段多摸 1 张。手牌没有基本牌时，可观看牌堆顶 N 张并使用其中的基本牌。',
+        });
+      } else if (key === 'jueiming') {
+        html += skillCardHtml(key, {
+          state: `本轮 ${s.used}/2`,
+          stateCls: s.used >= 2 ? 'used' : '',
+          meta: '各失1点体力后拼点：你赢 → 馀荫观看 +2 且视为对其使用【决斗】；输 → 其须对你打出所有【杀】。',
         });
       } else {
         html += skillCardHtml(key, { state: '被动' });
