@@ -1,0 +1,31 @@
+{
+  "name": "陆郁生 · 技能试炼场",
+  "short_name": "陆郁生",
+  "description": "三国杀自定义武将「陆郁生（素心傲雪）」的单机试炼场：银贞 / 洁霜 / 瑶心 完整结算，可选武将、人机对战，纯前端离线运行。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070d0b",
+  "theme_color": "#0b1512",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
