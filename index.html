@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-17 19:14 · 8a9de4d">
+<meta name="x-build" content="2026-10-17 19:20 · 75cd27d">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2116,14 +2116,27 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     { name: 'nanman',   label: '南蛮入侵', type: 'trick', count: 2,  suits: ['♠', '♣'] },
     { name: 'wanjian',  label: '万箭齐发', type: 'trick', count: 2,  suits: ['♥'] },
     { name: 'taoyuan',  label: '桃园结义', type: 'trick', count: 1,  suits: ['♥'] },
+    { name: 'wugu',     label: '五谷丰登', type: 'trick', count: 2,  suits: ['♥'] },
+    { name: 'jiedao',   label: '借刀杀人', type: 'trick', count: 2,  suits: ['♣'] },
 
     { name: 'qinggang', label: '青釭剑',   type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
     { name: 'cixiong',  label: '雌雄双股剑', type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
     { name: 'zhangba',  label: '丈八蛇矛', type: 'equip', slot: 'weapon', range: 3, count: 1, suits: ['♠'] },
     { name: 'qilin',    label: '麒麟弓',   type: 'equip', slot: 'weapon', range: 4, count: 1, suits: ['♥'] },
+    { name: 'zhuge',    label: '诸葛连弩', type: 'equip', slot: 'weapon', range: 1, count: 1, suits: ['♣'] },
+    { name: 'guanshi',  label: '贯石斧',   type: 'equip', slot: 'weapon', range: 3, count: 1, suits: ['♦'] },
+    { name: 'qinglong', label: '青龙偃月刀', type: 'equip', slot: 'weapon', range: 3, count: 1, suits: ['♠'] },
+    { name: 'guding',   label: '古锭刀',   type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
+    { name: 'fangtian', label: '方天画戟', type: 'equip', slot: 'weapon', range: 4, count: 1, suits: ['♦'] },
+    { name: 'hanbing',  label: '寒冰剑',   type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
+
     { name: 'bagua',    label: '八卦阵',   type: 'equip', slot: 'armor',  count: 1, suits: ['♠'] },
+    { name: 'renwang',  label: '仁王盾',   type: 'equip', slot: 'armor',  count: 1, suits: ['♣'] },
+    { name: 'baiyin',   label: '白银狮子', type: 'equip', slot: 'armor',  count: 1, suits: ['♣'] },
+
     { name: 'plusma',   label: '+1马',     type: 'equip', slot: 'horsePlus',  count: 3, suits: ['♠', '♥', '♣'] },
     { name: 'minusma',  label: '-1马',     type: 'equip', slot: 'horseMinus', count: 3, suits: ['♦', '♥', '♣'] },
+    { name: 'chitu',    label: '赤兔',     type: 'equip', slot: 'horseMinus', count: 1, suits: ['♥'] },
   ];
 
   const SLOT_LABEL = {
@@ -2145,13 +2158,24 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     nanman: '所有其他角色需打出【杀】，否则受到你造成的 1 点伤害。',
     wanjian: '所有其他角色需打出【闪】，否则受到你造成的 1 点伤害。',
     taoyuan: '所有角色各回复 1 点体力（不超过上限）。',
-    qinggang: '武器，攻击范围 2。',
-    cixiong: '武器，攻击范围 2。',
-    zhangba: '武器，攻击范围 3。',
-    qilin: '武器，攻击范围 4。',
+    wugu: '亮出牌堆顶 X 张牌（X 为存活角色数），从你开始每人依次选一张获得。',
+    jiedao: '令一名装备了武器的角色对其攻击范围内、由你指定的另一名角色使用一张【杀】，否则其将武器交给你。',
+    qinggang: '武器，攻击范围 2。你的【杀】无视目标的防具。',
+    cixiong: '武器，攻击范围 2。你对异性角色使用【杀】时，对方需弃一张牌，否则你摸一张。',
+    zhangba: '武器，攻击范围 3。你可以将两张手牌当【杀】使用或打出。',
+    qilin: '武器，攻击范围 4。你的【杀】造成伤害时，可弃置目标装备区的一匹马。',
+    zhuge: '武器，攻击范围 1。出牌阶段你使用【杀】无次数限制。',
+    guanshi: '武器，攻击范围 3。你的【杀】被【闪】抵消时，可弃两张牌令此【杀】依然生效。',
+    qinglong: '武器，攻击范围 3。你的【杀】被【闪】抵消后，可对同一目标再使用一张【杀】。',
+    guding: '武器，攻击范围 2。你的【杀】造成伤害时，若目标没有手牌，伤害 +1。',
+    fangtian: '武器，攻击范围 4。你使用的【杀】若是你的最后一张手牌，可额外指定至多两个目标。',
+    hanbing: '武器，攻击范围 2。你的【杀】造成伤害时，可防止此伤害，改为弃置对方两张牌。',
     bagua: '防具：当你需要打出【闪】时可判定，若为红色则视为打出【闪】。',
+    renwang: '防具：黑色的【杀】对你无效。',
+    baiyin: '防具：你受到的伤害最多为 1；失去装备区里的【白银狮子】时，回复 1 点体力。',
     plusma: '坐骑：其他角色计算与你的距离 +1。',
     minusma: '坐骑：你计算与其他角色的距离 -1。',
+    chitu: '坐骑（-1）：你计算与其他角色的距离 -1。',
   };
 
   /** 生成一副未洗的牌（id 唯一）。 */
@@ -2325,6 +2349,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   cards.DEFS.forEach((d) => {
     NAME_LABEL[d.name] = d.label;
   });
+
+  /* 性别（雌雄双股剑用）：默认男性，这里列女性 */
+  const FEMALE = { luyusheng: true, huangyueying: true };
 
   /* ----------------------------- 对局模式 / 身份 ----------------------------- */
 
@@ -2599,6 +2626,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       name: g.name,
       kingdom: g.kingdom,
       title: g.title,
+      gender: FEMALE[g.key] ? '女' : '男',
       maxHp: g.maxHp,
       hp: g.maxHp,
       hand: [],
@@ -2769,6 +2797,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       return p.equips.weapon ? p.equips.weapon.range : 1;
     }
 
+    /* 装备名速查（武器/防具效果各处都要用） */
+    weaponOf(p) {
+      return p && p.equips.weapon ? p.equips.weapon.name : null;
+    }
+
+    armorOf(p) {
+      return p && p.equips.armor ? p.equips.armor.name : null;
+    }
+
     handCard(p, id) {
       return p.hand.find((c) => c.id === id) || null;
     }
@@ -2787,10 +2824,37 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         if (c && c.id === cardId) {
           p.equips[slot] = null;
           this.gainCharge(p, 1); // 军势：装备离场也算失去牌
+          this.onEquipLost(p, c);
           return c;
         }
       }
       return null;
+    }
+
+    /** 装备离场时的触发（白银狮子：回复 1 点体力） */
+    onEquipLost(p, card) {
+      if (!card || card.name !== 'baiyin') return;
+      if (p.alive && p.hp < p.maxHp) {
+        this.heal(p, 1, '白银狮子');
+        this.pushLog(`【白银狮子】${p.name} 失去装备时回复 1 点体力。`, 'skill');
+        this.emit();
+      }
+    }
+
+    /** 五谷丰登的 AI 选牌：按牌的粗略价值挑最高的 */
+    aiPickWugu(pl, pool) {
+      const value = (c) => {
+        if (c.name === 'tao') return 100;
+        if (c.name === 'shan') return 82;
+        if (c.name === 'sha') return 72;
+        if (c.name === 'wuzhong') return 62;
+        if (c.name === 'jiu') return 55;
+        if (c.type === 'equip') return pl.equips[c.slot] ? 12 : 40;
+        return 45;
+      };
+      let best = pool[0];
+      for (const c of pool) if (value(c) > value(best)) best = c;
+      return best ? best.id : null;
     }
 
     /** 把牌放进弃牌堆；isDiscard=true 表示「弃置」（可通过洁霜被收回）。 */
@@ -3651,7 +3715,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       const free = !!(p.skills.duange && p.skills.duange.tier >= 1);
 
       if (asSha) {
-        if (this.ctx.shaUsed >= 1 && !p.skills.paoxiao && !recHit && !free) {
+        // 诸葛连弩 / 咆哮 / 军势记录 / 锻戈：都不受每回合 1 张【杀】限制
+        const noLimit =
+          !!p.skills.paoxiao || recHit || free || this.weaponOf(p) === 'zhuge';
+        if (this.ctx.shaUsed >= 1 && !noLimit) {
           return deny('本回合已使用过【杀】');
         }
         const reach = recHit || free ? others : inRange;
@@ -3693,6 +3760,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (!this.players.some((x) => x.alive && x.hp < x.maxHp)) return deny('没有受伤的角色');
           return { ok: true, needTargets: false, targets: [], reason: '' };
         }
+        case 'wugu': {
+          if (!this.alivePlayers().length) return deny('没有角色');
+          return { ok: true, needTargets: false, targets: [], reason: '' };
+        }
+        case 'jiedao': {
+          const armed = others.filter((o) => o.equips.weapon);
+          if (!armed.length) return deny('没有装备武器的角色');
+          return { ok: true, needTargets: true, targets: armed.map((o) => o.id), reason: '' };
+        }
         default:
           if (card.type === 'equip') return { ok: true, needTargets: false, targets: [], reason: '' };
           return deny('无法使用');
@@ -3724,6 +3800,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           p.equips[slot] = null;
           this.toDiscard(old, p, true);
           this.gainCharge(p, 1); // 军势：被替换的装备也算失去牌
+          this.onEquipLost(p, old);
         }
         p.equips[slot] = card;
         this.pushLog(`${p.name} 装备【${card.label}】`, 'action');
@@ -3791,25 +3868,163 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           dmg = 2;
           this.pushLog(`${p.name} 的【酒】生效：此【杀】伤害 +1`, 'skill');
         }
-        const t = targets[0];
-        if (t && t.alive) {
+
+        const weapon = this.weaponOf(p);
+
+        // 方天画戟：此【杀】是你的最后一张手牌时，可额外指定至多两个目标
+        if (weapon === 'fangtian' && p.hand.length === 0) {
+          const extra = this.aliveOthers(p).filter(
+            (o) => !targets.includes(o) && this.distance(p, o) <= this.rangeOf(p)
+          );
+          for (const o of extra.slice(0, 2)) {
+            const yes = await this.confirm(
+              p,
+              `【方天画戟】此为你的最后一张手牌，额外指定 ${o.name} 为【杀】的目标？`,
+              '方天画戟',
+              { extraId: o.id }
+            );
+            if (yes) {
+              targets.push(o);
+              this.pushLog(`【方天画戟】${p.name} 额外指定 ${o.name}。`, 'skill');
+              this.emit();
+            }
+          }
+        }
+
+        for (const t of targets) {
+          if (!t || !t.alive || this.over) continue;
           // 幽汉：姜维成为【杀】的目标时，弃置使用者一张牌（锁定技，先结算）
           if (t.skills.youhan) await this.tryYouhanOnTarget(t, p);
-          const dodged = await this.askForResponse(t, 'shan', `${p.name} 的【杀】`);
+
+          // 仁王盾：黑色的【杀】无效
+          if (this.armorOf(t) === 'renwang' && !card.red) {
+            this.pushLog(`【仁王盾】黑色的【杀】对 ${t.name} 无效。`, 'skill');
+            this.emit();
+            continue;
+          }
+
+          // 雌雄双股剑：对异性使用【杀】时，对方弃一张牌，否则你摸一张
+          if (weapon === 'cixiong' && p.gender !== t.gender) {
+            let give = false;
+            if (t.hand.length || SLOT_ORDER.some((s) => t.equips[s])) {
+              give = await this.confirm(
+                t,
+                `【雌雄双股剑】${p.name} 对你使用【杀】，你需弃一张牌，否则其摸一张。\n是否弃牌？`,
+                '雌雄·弃牌',
+                { userId: p.id }
+              );
+            }
+            if (give) {
+              await this.resolveStealLike(p, t, 'discard');
+              this.pushLog(`【雌雄双股剑】${t.name} 弃置了一张牌。`, 'skill');
+            } else {
+              await this.draw(p, 1);
+              this.pushLog(`【雌雄双股剑】${t.name} 没有弃牌，${p.name} 摸一张。`, 'skill');
+            }
+          }
+
+          // 出【闪】（青釭剑无视防具）
+          let dodged = await this.askForResponse(t, 'shan', `${p.name} 的【杀】`, {
+            ignoreArmor: weapon === 'qinggang',
+          });
+
+          // 贯石斧：被闪后可弃两张牌令此杀依然生效
+          if (dodged && weapon === 'guanshi' && p.hand.length >= 2) {
+            const yes = await this.confirm(
+              p,
+              `【贯石斧】${t.name} 打出了【闪】。弃两张牌令此【杀】依然生效？`,
+              '贯石斧',
+              { hand: p.hand.length }
+            );
+            if (yes) {
+              const dropped = await this.discardFromHand(p, 2, '贯石斧·弃牌', '【贯石斧】弃置第 1/2 张');
+              if (dropped >= 2) {
+                dodged = false;
+                this.pushLog(`【贯石斧】${p.name} 弃两张牌，此【杀】依然生效。`, 'skill');
+                this.emit();
+              }
+            }
+          }
+
           if (!dodged) {
+            // 寒冰剑：防止伤害，改为弃对方两张牌
+            if (weapon === 'hanbing' && t.hand.length + SLOT_ORDER.filter((s) => t.equips[s]).length >= 1) {
+              const yes = await this.confirm(
+                p,
+                `【寒冰剑】防止此伤害，改为弃置 ${t.name} 两张牌？`,
+                '寒冰剑',
+                { targetHp: t.hp }
+              );
+              if (yes) {
+                for (let i = 0; i < 2; i++) {
+                  if (!t.hand.length && !SLOT_ORDER.some((s) => t.equips[s])) break;
+                  await this.resolveStealLike(p, t, 'discard');
+                }
+                this.pushLog(`【寒冰剑】${p.name} 防止了伤害，弃置 ${t.name} 的牌。`, 'skill');
+                this.emit();
+                continue;
+              }
+            }
+
+            // 古锭刀：目标没有手牌则伤害 +1
+            let amount = dmg;
+            if (weapon === 'guding' && t.hand.length === 0) {
+              amount += 1;
+              this.pushLog(`【古锭刀】${t.name} 没有手牌，此【杀】伤害 +1。`, 'skill');
+            }
+
             await this.damage({
               sourceId: p.id,
               targetId: t.id,
-              amount: Math.max(0, dmg + numDelta),
-              cause: dmg > 1 ? '酒杀' : '杀',
+              amount: Math.max(0, amount + numDelta),
+              cause: amount > 1 ? '酒杀' : '杀',
               card,
               sourceless: !!p.skills.xiaoxiong,
             });
+
+            // 麒麟弓：造成伤害后可弃目标的马
+            if (weapon === 'qilin' && t.alive) {
+              const horses = SLOT_ORDER.filter((s) => s === 'horsePlus' || s === 'horseMinus').filter(
+                (s) => t.equips[s]
+              );
+              if (horses.length) {
+                const yes = await this.confirm(
+                  p,
+                  `【麒麟弓】弃置 ${t.name} 装备区的${horses.map((s) => `【${t.equips[s].label}】`).join('')}？`,
+                  '麒麟弓',
+                  {}
+                );
+                if (yes) {
+                  for (const s of horses) {
+                    const c = t.equips[s];
+                    t.equips[s] = null;
+                    this.toDiscard(c, t, true);
+                    this.pushLog(`【麒麟弓】${p.name} 弃置了 ${t.name} 的【${c.label}】。`, 'skill');
+                  }
+                  this.emit();
+                }
+              }
+            }
           } else {
             this.pushLog(`${t.name} 抵消了【杀】`, 'system');
             if (this.lastResponse) this.lastResponse.canceled = true;
             this.emit();
+
+            // 青龙偃月刀：被闪后可对同一目标再使用一张【杀】
+            if (weapon === 'qinglong' && t.alive) {
+              const next = p.hand.find((c) => c.name === 'sha');
+              if (next) {
+                const yes = await this.confirm(
+                  p,
+                  `【青龙偃月刀】对 ${t.name} 再使用一张【杀】？`,
+                  '青龙偃月刀',
+                  { cardId: next.id }
+                );
+                if (yes) await this.useCard(p, next, [t.id]);
+              }
+            }
           }
+          await this.pace();
         }
       } else {
         switch (effName) {
@@ -3845,6 +4060,90 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           case 'taoyuan': {
             for (const x of this.alivePlayers()) {
               if (x.hp < x.maxHp) this.heal(x, 1, '桃园结义');
+            }
+            break;
+          }
+          case 'wugu': {
+            const alive = this.alivePlayers();
+            const pool = [];
+            for (let i = 0; i < alive.length; i++) {
+              const c = this.popDeck();
+              if (c) pool.push(c);
+            }
+            this.pushLog(
+              `【五谷丰登】亮出 ${pool.length} 张：${pool.map((c) => `【${c.label}】`).join('')}`,
+              'skill'
+            );
+            this.emit();
+            const start = this.players.indexOf(p);
+            for (let i = 0; i < this.players.length && pool.length; i++) {
+              const pl = this.players[(start + i) % this.players.length];
+              if (!pl.alive) continue;
+              let pickId = null;
+              if (pl.isAI) {
+                pickId = this.aiPickWugu(pl, pool);
+              } else {
+                const id = await this.ask(pl, {
+                  kind: 'confirm',
+                  tag: '五谷·选择',
+                  text: `【五谷丰登】选择一张牌获得（剩 ${pool.length} 张）`,
+                  options: pool.map((c) => ({
+                    label: `【${c.label}】${c.suit}${c.rank}`,
+                    value: c.id,
+                  })),
+                  cancel: false,
+                });
+                pickId = id;
+              }
+              const idx = pool.findIndex((c) => c.id === pickId);
+              if (idx < 0) continue;
+              const got = pool.splice(idx, 1)[0];
+              pl.hand.push(got);
+              this.pushLog(`【五谷丰登】${pl.name} 获得【${got.label}】`, 'skill');
+              this.emit();
+              await this.pace();
+            }
+            // 剩余的牌进弃牌堆
+            pool.forEach((c) => this.toDiscard(c, p, false));
+            break;
+          }
+          case 'jiedao': {
+            const armed = targets[0];
+            if (!armed || !armed.alive || !armed.equips.weapon) break;
+            const victims = this.aliveOthers(armed).filter(
+              (o) => this.distance(armed, o) <= this.rangeOf(armed)
+            );
+            if (!victims.length) {
+              this.pushLog(`【借刀杀人】${armed.name} 攻击范围内没有其他角色。`, 'system');
+              break;
+            }
+            let victim = victims[0];
+            if (victims.length > 1) {
+              victim =
+                (await this.pickTarget(p, victims, '【借刀杀人】令其杀谁？', '借刀·目标')) || victims[0];
+            }
+            const sha = this.shaCardOf(armed);
+            let obey = false;
+            if (sha) {
+              obey = await this.confirm(
+                armed,
+                `【借刀杀人】${p.name} 令你对 ${victim.name} 使用一张【杀】，否则你的武器交给其。\n是否出【杀】？`,
+                '借刀·出杀',
+                { targetId: victim.id, cardId: sha.id }
+              );
+            }
+            if (obey && sha) {
+              this.pushLog(`【借刀杀人】${armed.name} 对 ${victim.name} 使用【杀】。`, 'skill');
+              this.emit();
+              await this.useCard(armed, sha, [victim.id]);
+            } else {
+              const w = armed.equips.weapon;
+              if (w) {
+                armed.equips.weapon = null;
+                p.hand.push(w);
+                this.pushLog(`【借刀杀人】${armed.name} 没有出【杀】，武器【${w.label}】归 ${p.name}。`, 'skill');
+                this.emit();
+              }
             }
             break;
           }
@@ -3993,17 +4292,23 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       return !!(p.equips.armor && p.equips.armor.name === 'bagua');
     }
 
-    async askForResponse(p, need, reason) {
+    async askForResponse(p, need, reason, opts) {
       if (!p || !p.alive) return false;
+      opts = opts || {};
       // 勤君：在本人出牌之前，先问持勤君者是否代打
       if (await this.tryQinjun(p, need)) return true;
 
       const needLabel = need === 'shan' ? '闪' : need === 'sha' ? '杀' : '桃';
       let baguaTried = false;
+      let zhangbaTried = false;
       for (let guard = 0; guard < 8; guard++) {
         const usable = this.responseCards(p, need);
-        const canBagua = need === 'shan' && this.hasBagua(p) && !baguaTried;
-        if (!usable.length && !canBagua) return false;
+        // 青釭剑：无视目标防具 → 八卦阵不能用
+        const canBagua = need === 'shan' && !opts.ignoreArmor && this.hasBagua(p) && !baguaTried;
+        // 丈八蛇矛：两张手牌当【杀】
+        const canZhangba =
+          need === 'sha' && this.weaponOf(p) === 'zhangba' && p.hand.length >= 2 && !zhangbaTried;
+        if (!usable.length && !canBagua && !canZhangba) return false;
 
         const options = usable.map((c) => ({
           label: `【${c.label}】${c.suit}${c.rank}`,
@@ -4011,6 +4316,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           cardId: c.id,
         }));
         if (canBagua) options.push({ label: '发动【八卦阵】判定', value: 'bagua' });
+        if (canZhangba) options.push({ label: '【丈八蛇矛】弃两张牌当【杀】', value: 'zhangba' });
 
         const choice = await this.ask(p, {
           kind: 'playCard',
@@ -4023,6 +4329,25 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         });
 
         if (!choice) return false;
+
+        if (choice === 'zhangba') {
+          zhangbaTried = true;
+          const dropped = await this.discardFromHand(p, 2, '丈八·弃牌', '【丈八蛇矛】弃置第 1/2 张');
+          if (dropped < 2) return false;
+          this.pushLog(`【丈八蛇矛】${p.name} 弃两张牌视为打出【杀】。`, 'skill');
+          this.lastResponse = {
+            byId: p.id,
+            card: null,
+            need,
+            asLabel: '杀',
+            virtual: '杀',
+            note: '丈八蛇矛',
+            canceled: false,
+          };
+          this.emit();
+          await this.pace();
+          return true;
+        }
 
         if (choice === 'bagua') {
           baguaTried = true;
@@ -4086,6 +4411,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       const adjusted = await this.tryYinzhen(t, amount, evt.cause);
       if (adjusted === 0) return 0; // 已被防止
       if (typeof adjusted === 'number') amount = adjusted;
+
+      // 白银狮子：受到的伤害最多为 1
+      if (this.armorOf(t) === 'baiyin' && amount > 1) amount = 1;
 
       const hpBefore = t.hp;
       t.hp -= amount;
@@ -4423,6 +4751,39 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (p.skills.pengjiu) {
         await this.activatePengjiu(p);
         if (this.over || !p.alive) return;
+      }
+      // 丈八蛇矛：手里没有【杀】时，问一次要不要弃两张牌当【杀】
+      if (this.weaponOf(p) === 'zhangba' && p.hand.length >= 2 && !p.hand.some((c) => c.name === 'sha')) {
+        const yes = await this.confirm(
+          p,
+          `【丈八蛇矛】弃两张手牌，视为使用一张【杀】？\n（手牌 ${p.hand.length} 张，本回合【杀】已用 ${this.ctx ? this.ctx.shaUsed : 0} 次）`,
+          '丈八·发动',
+          { hand: p.hand.length }
+        );
+        if (yes) {
+          const dropped = await this.discardFromHand(p, 2, '丈八·弃牌', '【丈八蛇矛】弃置第 1/2 张');
+          if (dropped >= 2) {
+            const foes = this.aliveOthers(p).filter((o) => this.distance(p, o) <= this.rangeOf(p));
+            const t = foes.length === 1 ? foes[0] : await this.pickTarget(p, foes, '【丈八蛇矛】杀谁？', '丈八·目标');
+            if (t) {
+              this.virtSeq = (this.virtSeq || 0) + 1;
+              const v = {
+                id: 'virt-zhangba-' + this.virtSeq,
+                virtual: true,
+                name: 'sha',
+                label: '杀',
+                type: 'basic',
+                suit: '',
+                rank: '',
+                red: false,
+              };
+              this.pushLog(`【丈八蛇矛】${p.name} 弃两张牌视为使用【杀】。`, 'skill');
+              this.emit();
+              await this.useCard(p, v, [t.id]);
+              if (this.over || !p.alive) return;
+            }
+          }
+        }
       }
 
       for (let guard = 0; guard < 80; guard++) {
@@ -4807,6 +5168,26 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             return p.hand.length >= 3;
           }
 
+          /* ---- 装备效果 ---- */
+          if (req.tag === '雌雄·弃牌') {
+            // 手里有废牌就弃，保护关键牌
+            return p.hand.length >= 2;
+          }
+          if (req.tag === '贯石斧') return p.hand.length >= 4;
+          if (req.tag === '寒冰剑') {
+            // 对方手牌多时拆牌更赚；血量低时直接打死更赚
+            const target = m.targetId ? E.get(m.targetId) : null;
+            return !!target && target.hp > 1 && target.hand.length >= 2;
+          }
+          if (req.tag === '麒麟弓') return true;
+          if (req.tag === '青龙偃月刀') return true;
+          if (req.tag === '方天画戟') return true;
+          if (req.tag === '丈八·发动') return p.hand.length >= 3;
+          if (req.tag === '借刀·出杀') {
+            // 别被"借刀"白打自己人；这里简单判断：有杀就出
+            return true;
+          }
+
           return false;
         }
 
@@ -4817,7 +5198,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (bagua) return 'bagua'; // 先判定，不消耗手牌
           if (req.tag === 'dying') return opts[0].value;
           if (req.tag === 'discard') return opts[0].value;
-          if (req.tag === '九伐·弃牌' || req.tag === '誓守·弃牌' || req.tag === '龙翎·弃牌') {
+          if (req.tag === '九伐·弃牌' || req.tag === '誓守·弃牌' || req.tag === '龙翎·弃牌' || req.tag === '丈八·弃牌' || req.tag === '贯石斧·弃牌') {
             // 弃最没用的那张
             let worst = null;
             let worstV = Infinity;
