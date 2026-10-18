@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-18 04:14 · ad3066b">
+<meta name="x-build" content="2026-10-18 21:01 · 3f84789">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -313,6 +313,16 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 .kingdom.wu { color: #9fe3bd; border-color: rgba(127, 214, 164, 0.45); }
 .kingdom.shu { color: #f0b3a8; border-color: rgba(215, 106, 95, 0.45); }
 .kingdom.jin { color: #cbaaf0; border-color: rgba(170, 132, 220, 0.5); }
+.kingdom.qun { color: #e8b48a; border-color: rgba(212, 138, 92, 0.5); }
+.kingdom.shen { color: #ffe9a8; border-color: rgba(240, 214, 130, 0.62); }
+.gen-glyph.qun { background: linear-gradient(150deg, #8a5230, #241109); }
+.gen-glyph.shen { background: linear-gradient(150deg, #9a7a26, #1a1406); }
+.avatar.qun { background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.18), transparent 45%), linear-gradient(150deg, #74401f, #1d0d05 70%); }
+.avatar.shen { background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.22), transparent 45%), linear-gradient(150deg, #8a6a1c, #16110a 70%); }
+.portrait-glyph.qun { background: linear-gradient(150deg, #8a5230, #241109); }
+.portrait-glyph.shen { background: linear-gradient(150deg, #9a7a26, #1a1406); }
+.foe-av.qun { background: linear-gradient(150deg, #8a5230, #241109); }
+.foe-av.shen { background: linear-gradient(150deg, #9a7a26, #1a1406); }
 
 .subtitle { font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-top: 3px; }
 .subtitle-inline { font-size: 10.5px; color: var(--muted); letter-spacing: 1px; margin-left: 4px; }
@@ -2426,6 +2436,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       maxHp: 4,
       skills: ['sanzui', 'yuyin'], // 绝明在罪标记归零后动态获得
     },
+    zhonghui: {
+      key: 'zhonghui',
+      name: '钟会',
+      kingdom: '神',
+      title: '天厝之野望',
+      maxHp: 4,
+      skills: ['xiezhao', 'quanmou', 'cuanni'],
+    },
   };
 
   /* 牌名 → 牌面文字，用于「记录」选择与日志 */
@@ -2797,6 +2815,36 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         '若你赢，你「馀荫」的观看范围+2直到本轮结束，然后你视为对其使用一张【决斗】；\n' +
         '否则其必须对你使用手牌中所有的【杀】。',
     },
+    xiezhao: {
+      name: '挟诏',
+      kind: '主动技',
+      tagline: '摸牌阶段改打牌，打出的伤害换「权」',
+      when: '摸牌阶段',
+      text:
+        '摸牌阶段，你可以亮出牌堆顶五张牌，然后依次打出其中合法的牌。\n' +
+        '此阶段内，你每造成1点伤害，你从牌堆顶扣置一张牌，称为「权」。\n' +
+        '其余的牌置入牌堆底。',
+    },
+    quanmou: {
+      name: '权谋',
+      kind: '转换技',
+      tagline: '阳：权能当手牌；阴：杀不可响应',
+      when: '出牌阶段限一次',
+      text:
+        '阳：出牌阶段限一次，你摸一张牌，然后将两张手牌置于武将牌上，称为「权」。你的「权」可以当手牌使用。\n' +
+        '阴：出牌阶段限一次，你摸两张牌，然后将一张手牌置于武将牌上，称为「权」。' +
+        '本回合你使用【杀】不可响应，你的「权」不能当手牌使用。',
+    },
+    cuanni: {
+      name: '篡逆',
+      kind: '主动技',
+      tagline: '受伤攒权，两回合内凑 5 枚就成事',
+      when: '你受到 1 点伤害后',
+      text:
+        '当你受到1点伤害后，你可以摸一张牌，然后将一张手牌置于武将牌上，称为「权」。\n' +
+        '成功：两回合内「权」达到5枚，你获得技能【吞并】。\n' +
+        '失败：你获得技能【唾据】。',
+    },
     paoxiao: {
       name: '咆哮',
       kind: '锁定技',
@@ -2897,10 +2945,13 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (key === 'sanzui') p.skills.sanzui = { sins: 3, armed: true, buff: false };
       if (key === 'yuyin') p.skills.yuyin = { bonus: 0 };
       if (key === 'jueiming') p.skills.jueiming = { used: 0 };
+      if (key === 'xiezhao') p.skills.xiezhao = { passive: true };
+      if (key === 'quanmou') p.skills.quanmou = { mode: 'yang', used: 0 };
+      if (key === 'cuanni') p.skills.cuanni = { started: false, round0: 0, done: false, result: null };
     });
     p.flags.record = null; // 军势「记录」的牌名
     // 武将牌上的附着牌（姜维的「明」；后续诸葛亮的星、赵云的霖也放这里）
-    p.marks = { ming: [], star: [], lin: [] };
+    p.marks = { ming: [], star: [], lin: [], quan: [] };
     // 判定区（延时锦囊，如【乐不思蜀】）
     p.judgeZone = [];
     return p;
@@ -4628,6 +4679,199 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     }
 
 
+    /* ------------------- 钟会：挟诏 / 权谋 / 篡逆 ------------------- */
+
+    /** 把手牌 n 张扣置为「权」 */
+    async putQuan(p, n, tag) {
+      let count = 0;
+      for (let i = 0; i < n && p.hand.length; i++) {
+        let card = null;
+        if (p.isAI) card = this.ai ? this.ai.pickDiscard(this, p) : p.hand[0];
+        else {
+          const id = await this.ask(p, {
+            kind: 'playCard',
+            tag: tag || '置权',
+            text: `置于武将牌上作为「权」（第 ${i + 1}/${n} 张）`,
+            options: p.hand.map((c) => ({
+              label: `【${c.label}】${c.suit}${c.rank}`,
+              value: c.id,
+              cardId: c.id,
+            })),
+            cancel: false,
+          });
+          card = id ? this.handCard(p, id) : null;
+        }
+        if (!card) break;
+        this.takeFromHand(p, card.id);
+        p.marks.quan.push(card);
+        count++;
+        this.emit();
+      }
+      return count;
+    }
+
+    /** 挟诏：摸牌阶段亮出 5 张，依次打出其中合法的牌 */
+    async activateXiezhao(p) {
+      if (!p.skills.xiezhao || !p.alive || this.over) return false;
+      const yes = await this.confirm(
+        p,
+        '【挟诏】亮出牌堆顶五张牌，然后依次打出其中合法的牌？\n（发动则不进行普通的摸牌）',
+        '挟诏'
+      );
+      if (!yes) return false;
+
+      const shown = [];
+      for (let i = 0; i < 5; i++) {
+        const c = this.popDeck();
+        if (c) shown.push(c);
+      }
+      this.pushLog(`【挟诏】亮出：${shown.map((c) => `【${c.label}】${c.suit}${c.rank}`).join('')}`, 'skill');
+      this.emit();
+      await this.pace();
+
+      const rest = shown.slice();
+      this.ctx = this.ctx || {};
+      this.ctx.xiezhao = true;
+      try {
+        for (let guard = 0; guard < 6 && rest.length && !this.over && p.alive; guard++) {
+          const legal = rest.filter((c) => this.canPlay(p, c).ok);
+          if (!legal.length) break;
+          let pick = null;
+          if (p.isAI) {
+            pick = legal[0];
+          } else {
+            const id = await this.ask(p, {
+              kind: 'confirm',
+              tag: '挟诏·出牌',
+              text: '依次打出其中合法的牌（点「结束」停止）',
+              options: legal.map((c) => ({ label: `【${c.label}】${c.suit}${c.rank}`, value: c.id })),
+              cancel: true,
+              cancelLabel: '结束',
+            });
+            if (!id) break;
+            pick = legal.find((c) => c.id === id) || null;
+          }
+          if (!pick) break;
+          rest.splice(rest.indexOf(pick), 1);
+          const chk = this.canPlay(p, pick);
+          p.hand.push(pick);
+          await this.useCard(p, pick, chk.needTargets ? (chk.targets || []).slice(0, 1) : []);
+        }
+      } finally {
+        this.ctx.xiezhao = false;
+      }
+
+      if (rest.length) {
+        this.deck.unshift(...rest); // 牌堆顶在数组末尾，unshift = 放到底部
+        this.pushLog(`【挟诏】剩余 ${rest.length} 张置于牌堆底。`, 'system');
+      }
+      this.emit();
+      return true;
+    }
+
+    /** 权谋：阳 / 阴 转换 */
+    async activateQuanmou(p) {
+      const s = p.skills.quanmou;
+      if (!s || s.used >= 1 || !p.alive || this.over) return;
+      const yang = s.mode === 'yang';
+      const need = yang ? 2 : 1;
+      if (p.hand.length < need) {
+        this.pushLog(`【权谋】需要 ${need} 张手牌，当前只有 ${p.hand.length} 张。`, 'system');
+        return;
+      }
+      const yes = await this.confirm(
+        p,
+        yang
+          ? `【权谋·阳】摸1张，然后置2张手牌为「权」。（当前 ${p.marks.quan.length} 枚）`
+          : `【权谋·阴】摸2张，然后置1张手牌为「权」；本回合你的【杀】不可响应。（当前 ${p.marks.quan.length} 枚）`,
+        '权谋·发动',
+        { mode: s.mode }
+      );
+      if (!yes) return;
+
+      s.used++;
+      await this.draw(p, yang ? 1 : 2);
+      const n = await this.putQuan(p, need, '权谋·置权');
+      if (!yang) p.flags.shaNoRespond = true;
+      s.mode = yang ? 'yin' : 'yang';
+      this.pushLog(
+        `【权谋】${yang ? '阳' : '阴'}：置 ${n} 张为「权」（共 ${p.marks.quan.length} 枚）。翻转为「${s.mode === 'yang' ? '阳' : '阴'}」。`,
+        'skill'
+      );
+      this.emit();
+    }
+
+    /** 阳：把「权」当手牌使用 */
+    async useQuan(p) {
+      const s = p.skills.quanmou;
+      const q = p.marks.quan;
+      if (!s || s.mode !== 'yang' || !q.length || !p.alive || this.over) return;
+      let card = q[0];
+      if (q.length > 1 && !p.isAI) {
+        const id = await this.ask(p, {
+          kind: 'confirm',
+          tag: '权·选牌',
+          text: `使用哪张「权」？（共 ${q.length} 张）`,
+          options: q.map((c) => ({ label: `【${c.label}】${c.suit}${c.rank}`, value: c.id })),
+          cancel: true,
+          cancelLabel: '取消',
+        });
+        if (!id) return;
+        card = q.find((c) => c.id === id) || card;
+      }
+      const chk = this.canPlay(p, card);
+      if (!chk.ok) {
+        this.pushLog(`【权谋】这张「权」现在用不了：${chk.reason}`, 'system');
+        return;
+      }
+      q.splice(q.indexOf(card), 1);
+      p.hand.push(card);
+      this.pushLog(`【权谋】${p.name} 把「权」当手牌使用【${card.label}】。`, 'skill');
+      this.emit();
+      await this.useCard(p, card, chk.needTargets ? (chk.targets || []).slice(0, 1) : []);
+    }
+
+    /** 篡逆：受伤后摸 1 置 1 权 */
+    async tryCuanni(t) {
+      const c = t.skills.cuanni;
+      if (!c || c.done || !t.alive) return;
+      const yes = await this.confirm(
+        t,
+        `【篡逆】摸一张牌，然后将一张手牌置于武将牌上为「权」？\n（当前 ${t.marks.quan.length} 枚，10 枚成功线：5 枚）`,
+        '篡逆',
+        { quan: t.marks.quan.length }
+      );
+      if (!yes) return;
+      if (!c.started) {
+        c.started = true;
+        c.round0 = this.round;
+      }
+      await this.draw(t, 1);
+      await this.putQuan(t, 1, '篡逆·置权');
+      this.emit();
+      this.checkCuanni(t);
+    }
+
+    checkCuanni(t) {
+      const c = t.skills.cuanni;
+      if (!c || c.done) return;
+      const elapsed = this.round - c.round0;
+      if (t.marks.quan.length >= 5 && elapsed <= 2) {
+        c.done = true;
+        c.result = 'success';
+        t.skills.tunbing = { passive: true };
+        this.pushLog(`【篡逆】成功！${t.name} 获得【吞并】。（⚠ 技能文本待补，效果暂未实装）`, 'skill');
+        this.emit();
+      } else if (elapsed > 2) {
+        c.done = true;
+        c.result = 'fail';
+        t.skills.tuoju = { passive: true };
+        this.pushLog(`【篡逆】失败。${t.name} 获得【唾据】。（⚠ 技能文本待补，效果暂未实装）`, 'skill');
+        this.emit();
+      }
+    }
+
+
     /* ------------------------------ 摸牌 ------------------------------ */
 
     reshuffle() {
@@ -4924,10 +5168,17 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         // 飞霆：每回合使用的第 1 张牌不可被响应
         const feitingNoRespond = !!(p.skills.feiting && p.flags.feitingArmed);
         if (p.skills.feiting) p.flags.feitingArmed = false;
+        // 权谋·阴：本回合你使用【杀】不可响应
+        const quanNoRespond = !!(p.flags.shaNoRespond && effName === 'sha');
         if (feitingNoRespond) {
           this.pushLog(`【飞霆】${p.name} 本回合的第 1 张牌不可被响应。`, 'skill');
           this.emit();
         }
+        if (quanNoRespond) {
+          this.pushLog(`【权谋·阴】${p.name} 使用的【杀】不可被响应。`, 'skill');
+          this.emit();
+        }
+        const shaNoRespond = feitingNoRespond || quanNoRespond;
 
         // 虢武：出牌阶段限一次，弃一张牌令此【杀】额外指定 2 个目标
         if (p.skills.guowu && p.skills.guowu.used < 1 && p.hand.length >= 1) {
@@ -5028,8 +5279,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             }
           }
 
-          // 出【闪】（青釭剑无视防具，飞霆不可响应）
-          let dodged = feitingNoRespond
+          // 出【闪】（青釭剑无视防具，飞霆/权谋阴不可响应）
+          let dodged = shaNoRespond
             ? false
             : await this.askForResponse(t, 'shan', `${p.name} 的【杀】`, {
                 ignoreArmor: weapon === 'qinggang',
@@ -5593,8 +5844,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       await this.pace();
 
       // 三罪③：下一次受到伤害时回复 1 点并摸 2 张
-      if (t.alive && t.skills.sanzui && t.skills.sanzui.buff) {
-        t.skills.sanzui.buff = false;
+      if (t.alive && t.skills.sanzui && t.skills.sanzui.buff) {        t.skills.sanzui.buff = false;
         this.pushLog(`【三罪③】${t.name} 回复 1 点体力并摸 2 张。`, 'skill');
         this.heal(t, 1, '三罪');
         await this.draw(t, 2);
@@ -5603,6 +5853,21 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
       // 归心：受到伤害后得「疑」、收伤害牌、摸一张
       if (t.alive && t.skills.guixin) await this.onGuixinDamaged(t, evt);
+
+      // 篡逆：受伤后摸 1 置 1「权」
+      if (t.alive && t.skills.cuanni) await this.tryCuanni(t);
+
+      // 挟诏：此阶段内你每造成 1 点伤害，从牌堆顶扣置一张「权」
+      if (src && src.skills.xiezhao && this.ctx && this.ctx.xiezhao) {
+        for (let i = 0; i < amount; i++) {
+          const c = this.popDeck();
+          if (c) {
+            src.marks.quan.push(c);
+            this.pushLog(`【挟诏】${src.name} 造成伤害，扣置 1 张为「权」（共 ${src.marks.quan.length} 枚）。`, 'skill');
+          }
+        }
+        this.emit();
+      }
 
       // 誓守：受到伤害后可以移去一张「明」回血（在濒死结算之前，奶回来就不用求桃了）
       if (t.alive && t.skills.shishou && t.marks && t.marks.ming.length) {
@@ -6031,6 +6296,17 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (s.jueiming && s.jueiming.used < 2) {
         out.push({ key: 'jueiming', label: '绝明', note: `本轮${s.jueiming.used}/2`, tone: 'violet' });
       }
+      if (s.quanmou && !s.quanmou.used && p.hand.length >= (s.quanmou.mode === 'yang' ? 2 : 1)) {
+        out.push({
+          key: 'quanmou',
+          label: `权谋·${s.quanmou.mode === 'yang' ? '阳' : '阴'}`,
+          note: s.quanmou.mode === 'yang' ? '摸1置2' : '摸2置1',
+          tone: s.quanmou.mode === 'yang' ? 'gold' : 'violet',
+        });
+      }
+      if (s.quanmou && s.quanmou.mode === 'yang' && p.marks.quan.length) {
+        out.push({ key: 'useQuan', label: '权', note: `${p.marks.quan.length} 枚`, tone: 'silver' });
+      }
       return out;
     }
 
@@ -6051,6 +6327,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         case 'zhiheng': return this.activateZhiheng(p);
         case 'yuyin': return this.activateYuyin(p);
         case 'jueiming': return this.activateJueiming(p);
+        case 'quanmou': return this.activateQuanmou(p);
+        case 'useQuan': return this.useQuan(p);
         default:
           return null;
       }
@@ -6096,6 +6374,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             () => this.activateYuyin(p),
           ],
           [() => p.skills.jueiming && p.skills.jueiming.used < 2, () => this.activateJueiming(p)],
+          [() => p.skills.quanmou && !p.skills.quanmou.used, () => this.activateQuanmou(p)],
+          [() => p.skills.quanmou && p.skills.quanmou.mode === 'yang' && p.marks.quan.length > 0, () => this.useQuan(p)],
         ];
         for (const [cond, run] of seq) {
           if (!cond()) continue;
@@ -6248,6 +6528,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (p.skills.sheji) p.skills.sheji.perTurn = 0; // 射戟：每回合重新计数
       if (p.skills.guowu) p.skills.guowu.used = 0; // 虢武：出牌阶段限一次
       p.flags.dubuAdjusted = false; // 独步 3 档：出牌阶段限一次
+      p.flags.shaNoRespond = false; // 权谋·阴：只持续到本回合结束
+      if (p.skills.quanmou) p.skills.quanmou.used = 0; // 权谋：出牌阶段限一次
       this.lastResponse = null; // 新回合清掉上一回合的响应牌，避免误解成这一回合的
       this.pushLog(`── ${this.round} 轮 · ${p.name} 的回合 ──`, 'turn');
       this.emit();
@@ -6268,9 +6550,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         this.emit();
         await this.pace();
       } else {
-        // 夷越第 1 档：摸牌阶段多摸 2 张
-        const yiyueBonus = p.skills.yiyue && p.skills.yiyue.tier >= 1 ? 2 : 0;
-        await this.draw(p, 2 + (p.skills.yingzi ? 1 : 0) + yiyueBonus + (p.skills.yuyin ? 1 : 0));
+        // 挟诏：摸牌阶段改打牌
+        let replaced = false;
+        if (p.skills.xiezhao) replaced = await this.activateXiezhao(p);
+        if (!replaced) {
+          // 夷越第 1 档：摸牌阶段多摸 2 张
+          const yiyueBonus = p.skills.yiyue && p.skills.yiyue.tier >= 1 ? 2 : 0;
+          await this.draw(p, 2 + (p.skills.yingzi ? 1 : 0) + yiyueBonus + (p.skills.yuyin ? 1 : 0));
+        }
       }
       if (this.over || !p.alive) return;
 
@@ -6313,6 +6600,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           }
           // 绝明：每轮限 2 次；馀荫：观看范围 +2「直到本轮结束」
           if (p.skills.jueiming) p.skills.jueiming.used = 0;
+          if (p.skills.cuanni && !p.skills.cuanni.done) this.checkCuanni(p);
           if (p.skills.yuyin) p.skills.yuyin.bonus = 0;
         });
         this.pushLog(`══ 第 ${this.round} 轮开始 ══`, 'turn');
@@ -6372,7 +6660,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         });
         // 武将牌上的附着牌（明 / 星 / 霖）也算，否则牌数会少
         if (p.marks) {
-          n += p.marks.ming.length + p.marks.star.length + p.marks.lin.length;
+          n += p.marks.ming.length + p.marks.star.length + p.marks.lin.length + p.marks.quan.length;
         }
         if (p.judgeZone) n += p.judgeZone.length;
       }
@@ -6606,6 +6894,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             return sha ? sha.value : (opts[0] ? opts[0].value : null);
           }
           if (req.tag === '绝明·目标') return true;
+
+          /* ---- 钟会 ---- */
+          if (req.tag === '挟诏') return p.hand.length <= 3;
+          if (req.tag === '权谋·发动') return p.hand.length >= 2;
+          if (req.tag === '篡逆') return p.hand.length >= 1;
 
           return false;
         }
@@ -6983,7 +7276,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   };
 
   const GD = S.Engine.GENERAL_DATA;
-  const SIDE_CLASS = { 蜀: 'shu', 吴: 'wu', 魏: 'wei', 晋: 'jin' };
+  const SIDE_CLASS = { 蜀: 'shu', 吴: 'wu', 魏: 'wei', 晋: 'jin', 群: 'qun', 神: 'shen' };
 
   /* 有立绘的武将（其余的用姓氏字牌占位）
      路径只写一次，构建时按出现次数内联，避免同一张图被塞进多份 base64 */
@@ -7594,6 +7887,15 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       } else if (key === 'jueiming') {
         state = `本轮 ${s.used}/2`;
         cls = s.used >= 2 ? 'used' : '';
+      } else if (key === 'xiezhao') {
+        state = '摸牌阶段';
+      } else if (key === 'quanmou') {
+        const q = lu.marks && lu.marks.quan ? lu.marks.quan.length : 0;
+        state = `${s.mode === 'yang' ? '阳' : '阴'} · 权 ${q}`;
+      } else if (key === 'cuanni') {
+        const q = lu.marks && lu.marks.quan ? lu.marks.quan.length : 0;
+        state = s.done ? (s.result === 'success' ? '成功' : '失败') : `权 ${q}/5`;
+        cls = s.done ? 'used' : '';
       }
       const recName = key === 'junshi' && lu.flags && lu.flags.record;
       const tipExtra = recName
@@ -7788,7 +8090,23 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       '<path d="M12 3.2c3.6 2 5.4 5 5.4 8.6 0 3.4-2.4 6.6-5.4 9-3-2.4-5.4-5.6-5.4-9 0-3.6 1.8-6.6 5.4-8.6Z"/>' +
       '<path d="M12 8v8M8.4 12h7.2" stroke-width="1.2"/>' +
       '</svg>',
-    jueiming:
+    xiezhao:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M5.6 3.6h9.2l4 4v12.8H5.6Z"/>' +
+      '<path d="M14.8 3.6v4h4" stroke-width="1.3"/>' +
+      '<path d="M8.6 12h7M8.6 15.6h5" stroke-width="1.2"/>' +
+      '</svg>',
+    quanmou:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="8.2"/>' +
+      '<path d="M12 3.8c-3 2.4-3 13.9 0 16.4 3-2.5 3-14 0-16.4Z" stroke-width="1.2"/>' +
+      '<path d="M4.2 12h15.6" stroke-width="1.2"/>' +
+      '</svg>',
+    cuanni:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 2.6 4.6 20.4h14.8Z"/>' +
+      '<path d="M12 8.4v5.6M12 16.6v1.4" stroke-width="1.3"/>' +
+      '</svg>',    jueiming:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M4.6 19.4 19.4 4.6"/>' +
       '<path d="M8.2 4.6h11.2v11.2" stroke-width="1.3"/>' +
@@ -8051,6 +8369,24 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           state: `本轮 ${s.used}/2`,
           stateCls: s.used >= 2 ? 'used' : '',
           meta: '各失1点体力后拼点：你赢 → 馀荫观看 +2 且视为对其使用【决斗】；输 → 其须对你打出所有【杀】。',
+        });
+      } else if (key === 'xiezhao') {
+        html += skillCardHtml(key, {
+          state: '摸牌阶段',
+          meta: '亮出牌堆顶 5 张，依次打出其中合法的牌；此阶段每造成 1 点伤害扣 1 张为「权」，其余牌置于牌堆底。',
+        });
+      } else if (key === 'quanmou') {
+        const q = lu.marks && lu.marks.quan ? lu.marks.quan.length : 0;
+        html += skillCardHtml(key, {
+          state: s.mode === 'yang' ? '阳 · 权可当手牌' : '阴 · 杀不可响应',
+          meta: `当前「权」${q} 枚。阳：摸1置2；阴：摸2置1。用一次后翻面。`,
+        });
+      } else if (key === 'cuanni') {
+        const q = lu.marks && lu.marks.quan ? lu.marks.quan.length : 0;
+        html += skillCardHtml(key, {
+          state: s.done ? (s.result === 'success' ? '已成功' : '已失败') : `权 ${q}/5`,
+          stateCls: s.done ? 'used' : '',
+          meta: '受伤后摸1置1「权」；两回合内凑到 5 枚 → 【吞并】，超时 → 【唾据】（两者文本待补）。',
         });
       } else {
         html += skillCardHtml(key, { state: '被动' });
