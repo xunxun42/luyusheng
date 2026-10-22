@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-22 19:01 · 574de63">
+<meta name="x-build" content="2026-10-23 02:01 · 783e0c8">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1987,6 +1987,86 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   background: linear-gradient(90deg, rgba(88, 32, 26, 0.82), rgba(40, 16, 12, 0.6));
   color: #f4cfc7;
 }
+/* 武将编辑器 */
+#genEditor { z-index: 120; }
+.editor-card { width: min(760px, 88vw); max-height: 88vh; }
+#edBody { display: flex; flex-direction: column; gap: 12px; }
+.ed-note {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #9aa79b;
+  padding: 9px 11px;
+  border-left: 2px solid rgba(198, 162, 74, 0.55);
+  background: rgba(58, 50, 24, 0.28);
+  border-radius: 4px;
+}
+.ed-note code {
+  font-family: ui-monospace, Consolas, monospace;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #e2cb92;
+}
+.ed-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.ed-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #8d9a8f; }
+.ed-grid input, .ed-grid select {
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(160, 168, 158, 0.3);
+  background: rgba(18, 22, 19, 0.9);
+  color: #dfe4dc;
+  font: inherit;
+  font-size: 12px;
+}
+.ed-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.ed-slot { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #8d9a8f; }
+.ed-slot select {
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(160, 168, 158, 0.3);
+  background: rgba(18, 22, 19, 0.9);
+  color: #dfe4dc;
+  font: inherit;
+  font-size: 12px;
+}
+.ed-hint { font-size: 11px; color: #7f8b81; line-height: 1.6; }
+.ed-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ed-json {
+  width: 100%;
+  min-height: 120px;
+  padding: 9px;
+  border-radius: 5px;
+  border: 1px solid rgba(160, 168, 158, 0.3);
+  background: #0e1210;
+  color: #b9c2ba;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  resize: vertical;
+}
+.ed-list { border-top: 1px solid rgba(198, 162, 74, 0.16); padding-top: 10px; }
+.ed-list h4 { font-size: 11px; font-weight: 500; color: var(--gold-2); letter-spacing: 1px; margin-bottom: 8px; }
+.ed-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: rgba(30, 36, 32, 0.7);
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+.ed-item b { color: #e6ebdf; font-weight: 500; min-width: 4em; }
+.ed-item i { font-style: normal; font-size: 10px; color: #8b978c; flex: 1; }
+.ed-empty { font-size: 11px; color: #6f7d72; }
+.pick-divider {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #8a6a2e;
+  padding: 8px 2px 2px;
+  border-top: 1px dashed rgba(198, 162, 74, 0.22);
+  margin-top: 4px;
+}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-512.png">
@@ -2171,7 +2251,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     </div>
     <div class="pick-body">
       <section class="pick-col">
-        <h3>你的武将</h3>
+        <h3>你的武将 <button id="btnGenEditor" class="mini">＋ 自制武将</button></h3>
         <div class="pick-grid" id="pickMine"></div>
       </section>
       <section class="pick-col">
@@ -2196,8 +2276,32 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   </div>
 </div>
 
+<div class="modal" id="genEditor" hidden>
+  <div class="modal-card editor-card">
+    <div class="modal-head">
+      <h2>武将编辑器</h2>
+      <button id="edClose" class="mini">关闭</button>
+    </div>
+    <div class="modal-body" id="edBody"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 <script>
+/* ---- src/custom-generals.js ---- */
+/* ==========================================================================
+ * custom-generals.js — 已经过「终端审批」的自制武将
+ *
+ * 由 tools/apply-custom.js 写入，请勿手改结构。
+ * 想撤销某个：node tools/apply-custom.js --remove <key>
+ * ========================================================================== */
+(function (global) {
+  'use strict';
+  global.SGS = global.SGS || {};
+  global.SGS.customGenerals = [];
+})(typeof window !== 'undefined' ? window : globalThis);
+
+;
 /* ---- src/cards.js ---- */
 /* ==========================================================================
  * cards.js — 牌堆定义
@@ -3032,7 +3136,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       name: g.name,
       kingdom: g.kingdom,
       title: g.title,
-      gender: FEMALE[g.key] ? '女' : '男',
+      gender: g.gender || (FEMALE[g.key] ? '女' : '男'),
       maxHp: g.maxHp,
       hp: g.maxHp,
       hand: [],
@@ -7852,6 +7956,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     tabSkills: $('#tabSkills'),
     tabLog: $('#tabLog'),
     tabPile: $('#tabPile'),
+    genEditor: $('#genEditor'),
+    edBody: $('#edBody'),
+    btnGenEditor: $('#btnGenEditor'),
+    edClose: $('#edClose'),
     pileHead: $('#pileHead'),
     pileGrid: $('#pileGrid'),
     pileDot: $('#pileDot'),
@@ -7901,6 +8009,94 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
   const GD = S.Engine.GENERAL_DATA;
   const SIDE_CLASS = { 蜀: 'shu', 吴: 'wu', 魏: 'wei', 晋: 'jin', 群: 'qun', 神: 'shen' };
+
+  /* ---------------------------- 自制武将 ----------------------------
+   * 只存 localStorage；要真正上线必须导出 JSON 后在终端跑
+   *   node tools/apply-custom.js 导出.json
+   * 再 build + deploy。浏览器没有写服务器的能力，所以这里是硬边界。 */
+
+  const CUSTOM_STORE = 'sgs.customGenerals.v1';
+  const CUSTOM_PREFIX = 'custom_';
+
+  /* 可以随便拼的技能（排除依赖其他技能或特定武将的） */
+  const UNPICKABLE = new Set([
+    'shishou',   // 依赖九伐次数
+    'jueiming',  // 依赖三罪的馀荫
+    'yinzhen',   // 陆郁生专用（引用 this.lu）
+    'jieshuang',
+    'yaoxin',
+    'tunbing',   // 文本待补
+    'tuoju',
+  ]);
+
+  function pickableSkills() {
+    const seen = new Set();
+    Object.values(GD).forEach((g) => (g.skills || []).forEach((k) => seen.add(k)));
+    // 引擎里已实装但不在任何武将身上的也带上
+    ['tieqi'].forEach((k) => seen.add(k));
+    return [...seen]
+      .filter((k) => SKILL_INFO[k] && !UNPICKABLE.has(k))
+      .sort((a, b) => (SKILL_INFO[a].name || a).localeCompare(SKILL_INFO[b].name || b, 'zh'));
+  }
+
+  function readCustomStore() {
+    try {
+      const raw = globalThis.localStorage && globalThis.localStorage.getItem(CUSTOM_STORE);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(isValidCustom) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeCustomStore(list) {
+    try {
+      globalThis.localStorage.setItem(CUSTOM_STORE, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isValidCustom(d) {
+    return (
+      d &&
+      typeof d.key === 'string' &&
+      d.key.startsWith(CUSTOM_PREFIX) &&
+      typeof d.name === 'string' &&
+      d.name.trim().length > 0 &&
+      Array.isArray(d.skills) &&
+      d.skills.length > 0 &&
+      d.skills.every((k) => !!SKILL_INFO[k])
+    );
+  }
+
+  /** 把一条自制武将挂进 GD，选将界面立刻能看到 */
+  function registerCustom(d) {
+    GD[d.key] = {
+      key: d.key,
+      name: d.name,
+      kingdom: d.kingdom || '蜀',
+      title: d.title || '自制',
+      maxHp: Math.max(1, Math.min(8, parseInt(d.maxHp, 10) || 4)),
+      gender: d.gender === '女' ? '女' : '男',
+      skills: d.skills.slice(0, 4),
+      custom: true,
+    };
+  }
+
+  /** 启动时：把本地的 + 已经过终端审批的 都挂上 */
+  function applyStoredCustoms() {
+    const shipped = (globalThis.SGS && globalThis.SGS.customGenerals) || [];
+    shipped.filter(isValidCustom).forEach((d) => registerCustom(Object.assign({ shipped: true }, d)));
+    readCustomStore().forEach((d) => {
+      if (!GD[d.key]) registerCustom(d);
+    });
+  }
+
+  applyStoredCustoms();
+
 
   /* 有立绘的武将（其余的用姓氏字牌占位）
      路径只写一次，构建时按出现次数内联，避免同一张图被塞进多份 base64 */
@@ -8026,7 +8222,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
   function renderPicker() {
     const keys = Object.keys(GD);
-    el.pickMine.innerHTML = keys.map((k) => genCardHtml(k, state.pick.me === k)).join('');
+    const builtin = keys.filter((k) => !GD[k].custom);
+    const customs = keys.filter((k) => GD[k].custom);
+    el.pickMine.innerHTML =
+      builtin.map((k) => genCardHtml(k, state.pick.me === k)).join('') +
+      (customs.length
+        ? `<div class="pick-divider">自制（只在你本机）</div>` +
+          customs.map((k) => genCardHtml(k, state.pick.me === k)).join('')
+        : '');
 
     // 模式按钮高亮
     Array.from(el.pickMode.querySelectorAll('[data-mode]')).forEach((b) => {
@@ -9437,6 +9640,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     r(action);
   }
 
+  if (el.btnGenEditor) el.btnGenEditor.addEventListener('click', openEditor);
+  if (el.edClose) el.edClose.addEventListener('click', closeEditor);
+  if (el.genEditor) {
+    el.genEditor.addEventListener('click', (ev) => {
+      if (ev.target === el.genEditor) closeEditor();
+    });
+  }
+
   el.btnEnd.addEventListener('click', () => {
     if (state.mode === 'play' && state.playResolve) finishAction({ type: 'end' });
   });
@@ -9756,6 +9967,169 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
   /* ------------------------------ 杂项 ------------------------------ */
 
+  /* ---------------------------- 编辑器 UI ---------------------------- */
+
+  function openEditor() {
+    if (!el.genEditor) return;
+    el.genEditor.hidden = false;
+    renderEditor();
+  }
+
+  function closeEditor() {
+    if (el.genEditor) el.genEditor.hidden = true;
+  }
+
+  function editorFormHtml(customs) {
+    const skills = pickableSkills();
+    const opts = (sel) =>
+      '<option value="">（空）</option>' +
+      skills
+        .map(
+          (k) =>
+            `<option value="${k}"${sel === k ? ' selected' : ''}>${SKILL_INFO[k].name}　${SKILL_INFO[k].kind || ''}</option>`
+        )
+        .join('');
+    const slots = [0, 1, 2, 3]
+      .map(
+        (i) =>
+          `<label class="ed-slot"><span>技能 ${i + 1}</span><select class="ed-skill" data-i="${i}">${opts('')}</select></label>`
+      )
+      .join('');
+    const hp = [3, 4, 5, 6, 7, 8].map((n) => `<option value="${n}"${n === 4 ? ' selected' : ''}>${n}</option>`).join('');
+    const kingdoms = ['蜀', '魏', '吴', '群', '晋', '神']
+      .map((k) => `<option value="${k}"${k === '蜀' ? ' selected' : ''}>${k}</option>`)
+      .join('');
+
+    const list = customs.length
+      ? customs
+          .map(
+            (d) =>
+              `<div class="ed-item"><b>${d.name}</b><i>${d.kingdom}·${d.maxHp}·${d.skills
+                .map((k) => (SKILL_INFO[k] ? SKILL_INFO[k].name : k))
+                .join('/')}</i><button class="mini" data-del="${d.key}">删除</button></div>`
+          )
+          .join('')
+      : '<p class="ed-empty">还没有自制武将</p>';
+
+    return (
+      `<p class="ed-note">自制武将<b>只存在这台电脑的浏览器里</b>（localStorage），不会上传、别人看不到。<br>` +
+      `想让它进共享版，必须<b>导出 JSON</b>，然后在终端跑 <code>node tools/apply-custom.js 文件.json</code>，再 build + deploy。</p>` +
+      `<div class="ed-grid">` +
+      `<label><span>姓名</span><input id="edName" maxlength="8" placeholder="如：陆抗"></label>` +
+      `<label><span>称号</span><input id="edTitle" maxlength="12" placeholder="如：末越之孤"></label>` +
+      `<label><span>势力</span><select id="edKingdom">${kingdoms}</select></label>` +
+      `<label><span>体力</span><select id="edHp">${hp}</select></label>` +
+      `<label><span>性别</span><select id="edGender"><option>男</option><option>女</option></select></label>` +
+      `</div>` +
+      `<div class="ed-slots">${slots}</div>` +
+      `<p class="ed-hint">技能只能从<b>已实装的技能库</b>里挑（引擎不会凭空造效果）。挑 2~4 个组成新武将。</p>` +
+      `<div class="ed-actions">` +
+      `<button id="edSave" class="btn primary">保存到本地</button>` +
+      `<button id="edExport" class="btn ghost">导出 JSON</button>` +
+      `<button id="edImport" class="btn ghost">导入 JSON</button>` +
+      `</div>` +
+      `<textarea id="edJson" class="ed-json" spellcheck="false" hidden></textarea>` +
+      `<div class="ed-list"><h4>本机已保存（${customs.length}）</h4>${list}</div>`
+    );
+  }
+
+  function renderEditor() {
+    if (!el.edBody) return;
+    const customs = readCustomStore();
+    el.edBody.innerHTML = editorFormHtml(customs);
+
+    const json = el.edBody.querySelector('#edJson');
+
+    el.edBody.querySelector('#edSave').addEventListener('click', () => {
+      const name = (el.edBody.querySelector('#edName').value || '').trim();
+      if (!name) return toast('先填个姓名');
+      const skills = [...el.edBody.querySelectorAll('.ed-skill')]
+        .map((s) => s.value)
+        .filter(Boolean);
+      if (!skills.length) return toast('至少要挑 1 个技能');
+      const list = readCustomStore();
+      if (list.some((d) => d.name === name)) return toast(`已经有叫「${name}」的自制武将了`);
+
+      const def = {
+        key: CUSTOM_PREFIX + Date.now().toString(36),
+        name,
+        title: (el.edBody.querySelector('#edTitle').value || '').trim() || '自制',
+        kingdom: el.edBody.querySelector('#edKingdom').value,
+        maxHp: parseInt(el.edBody.querySelector('#edHp').value, 10) || 4,
+        gender: el.edBody.querySelector('#edGender').value,
+        skills,
+      };
+      list.push(def);
+      if (!writeCustomStore(list)) return toast('本地存储写入失败（可能是隐私模式）');
+      registerCustom(def);
+      renderPicker();
+      renderEditor();
+      toast(`已保存「${name}」，选将界面最下面能看到`);
+    });
+
+    el.edBody.querySelector('#edExport').addEventListener('click', () => {
+      const list = readCustomStore();
+      if (!list.length) return toast('还没有可导出的自制武将');
+      json.hidden = false;
+      json.value = JSON.stringify(list, null, 2);
+      json.focus();
+      json.select();
+      try {
+        if (navigator.clipboard) navigator.clipboard.writeText(json.value);
+        toast('已复制到剪贴板；也可以手动复制下面的文本');
+      } catch (e) {
+        toast('已显示在下面，手动复制即可');
+      }
+    });
+
+    el.edBody.querySelector('#edImport').addEventListener('click', () => {
+      json.hidden = false;
+      json.value = json.value || '';
+      json.focus();
+      toast('把 JSON 粘到下面的框里，再点一次「导入 JSON」');
+      json.onchange = null;
+      // 第二次点击才真正导入
+      el.edBody.querySelector('#edImport').textContent = '确认导入';
+      el.edBody.querySelector('#edImport').onclick = () => {
+        let arr;
+        try {
+          arr = JSON.parse(json.value);
+        } catch (e) {
+          return toast('JSON 解析失败');
+        }
+        const ok = arr.filter(isValidCustom);
+        if (!ok.length) return toast('里面没有合法的自制武将');
+        const list = readCustomStore();
+        let added = 0;
+        ok.forEach((d) => {
+          if (list.some((x) => x.key === d.key || x.name === d.name)) return;
+          list.push(d);
+          registerCustom(d);
+          added++;
+        });
+        writeCustomStore(list);
+        renderPicker();
+        renderEditor();
+        toast(added ? `导入了 ${added} 个` : '都是重复的，没导入');
+      };
+    });
+
+    el.edBody.querySelectorAll('[data-del]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const key = b.dataset.del;
+        const list = readCustomStore().filter((d) => d.key !== key);
+        writeCustomStore(list);
+        // 从 GD 里摘掉（除非它是已经上线的那份）
+        const shipped = ((globalThis.SGS && globalThis.SGS.customGenerals) || []).some((d) => d.key === key);
+        if (!shipped) delete GD[key];
+        if (state.pick.me === key) state.pick.me = 'luyusheng';
+        if (state.pick.others.includes(key)) state.pick.others = state.pick.others.filter((x) => x !== key);
+        renderPicker();
+        renderEditor();
+        toast('已删除');
+      });
+    });
+  }
   function toast(msg, ms) {
     el.toast.textContent = msg;
     el.toast.hidden = false;
@@ -10079,6 +10453,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   applyBrand(state.me);
   if (params.has('selftest') || params.has('watch') || params.has('play')) startGame();
   else openPicker();
+
+  if (params.has('editor')) openEditor();
 
   if (params.has('drawer')) setDrawer(true);
 
