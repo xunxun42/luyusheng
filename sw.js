@@ -1,5 +1,5 @@
 /* 由 tools/build-single.js 生成，请勿手改 */
-const CACHE = 'lusheng-4e31ed7677';
+const CACHE = 'lusheng-c5324ed794';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
