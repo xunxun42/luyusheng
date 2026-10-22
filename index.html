@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-22 14:07 · 1e4f070">
+<meta name="x-build" content="2026-10-22 18:46 · a0ec746">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5509,6 +5509,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       }
 
       let targets = (targetIds || []).map((id) => this.get(id)).filter(Boolean);
+      // 孤裁可能把受益者改成别人，所以用 ben 代替 p
+      let ben = p;
       if (!card.virtual) this.takeFromHand(p, card.id);
 
       // 牌名：幽汉把装备牌当【决斗】看待
@@ -5542,7 +5544,11 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       await this.pace();
 
       // 孤裁：别人对你以外的唯一目标使用非装备牌时，可以抢过来打自己
-      if (card.type !== 'equip' && targets.length === 1 && targets[0] !== p) {
+      // 孤裁：「你不为其他角色使用非装备牌的唯一目标」就能抢——包括群体牌（南蛮/万箭/五谷）
+      // 和无目标的自益锦囊（无中生有/桃园结义）
+      const gzCard = card.type !== 'equip' && !card.delayed && effName !== 'jiedao' && effName !== 'lebu' && effName !== 'shandian';
+      const alreadySoleGz = targets.length === 1 && targets.some((t) => t.skills && t.skills.gucai);
+      if (gzCard && !alreadySoleGz) {
         const gz = this.players.find(
           (z) =>
             z.alive &&
@@ -5550,19 +5556,25 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             z.skills.gucai &&
             z.skills.linyuan &&
             z.skills.linyuan.charge >= 1 &&
-            z.skills.gucai.used < 2 &&
-            targets[0] !== z
+            z.skills.gucai.used < 2
         );
         if (gz) {
+          const who =
+            targets.length === 0
+              ? '这张牌没有指定你'
+              : targets.length === 1
+                ? `指定了 ${targets[0].name}`
+                : `指定了 ${targets.map((t) => t.name).join('、')}`;
           const yes = await this.confirm(
             gz,
-            `【孤裁】${p.name} 使用【${label}】指定了 ${targets[0].name}。\n消耗1点蓄力点，把你改成它的唯一目标？`,
+            `【孤裁】${p.name} 使用【${label}】，${who}。\n消耗1点蓄力点，把它的唯一目标改成你？`,
             '孤裁',
-            { userId: p.id, targetId: targets[0].id }
+            { userId: p.id, targetId: targets[0] ? targets[0].id : null, n: targets.length }
           );
           if (yes) {
             gz.skills.gucai.used++;
             gz.skills.linyuan.charge--;
+            ben = gz;
             targets = [gz];
             this.gucaiWatch = { id: gz.id, hp: gz.hp };
             this.pushLog(`【孤裁】${gz.name} 消耗1点蓄力点，将此牌的唯一目标改为自己。`, 'skill');
@@ -5883,14 +5895,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           }
           case 'tao': {
             this.stats.tao++;
-            this.heal(p, Math.max(0, 1 + numDelta), '桃');
+            this.heal(ben, Math.max(0, 1 + numDelta), '桃');
             break;
           }
           case 'wuzhong':
-            await this.draw(p, 2);
+            await this.draw(ben, 2);
             break;
           case 'juedou':
-            await this.resolveDuel(p, targets[0]);
+            await this.resolveDuel(ben === p ? p : ben, targets[0] || (ben === p ? null : p));
             break;
           case 'guohe':
             await this.resolveStealLike(p, targets[0], 'discard');
@@ -5899,14 +5911,18 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             await this.resolveStealLike(p, targets[0], 'gain');
             break;
           case 'nanman':
-            await this.resolveAoe(p, 'sha', '南蛮入侵');
+            await this.resolveAoe(p, 'sha', '南蛮入侵', ben === p ? null : [ben]);
             break;
           case 'wanjian':
-            await this.resolveAoe(p, 'shan', '万箭齐发');
+            await this.resolveAoe(p, 'shan', '万箭齐发', ben === p ? null : [ben]);
             break;
           case 'taoyuan': {
-            for (const x of this.alivePlayers()) {
-              if (x.hp < x.maxHp) this.heal(x, 1, '桃园结义');
+            if (ben === p) {
+              for (const x of this.alivePlayers()) {
+                if (x.hp < x.maxHp) this.heal(x, 1, '桃园结义');
+              }
+            } else if (ben.hp < ben.maxHp) {
+              this.heal(ben, 1, '桃园结义');
             }
             break;
           }
@@ -5922,10 +5938,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
               'skill'
             );
             this.emit();
-            const start = this.players.indexOf(p);
+            const start = this.players.indexOf(ben === p ? p : ben);
+            const onlyBen = ben !== p;
             for (let i = 0; i < this.players.length && pool.length; i++) {
               const pl = this.players[(start + i) % this.players.length];
               if (!pl.alive) continue;
+              if (onlyBen && pl !== ben) continue; // 孤裁：只剩张角能拿
               let pickId = null;
               if (pl.isAI) {
                 pickId = this.aiPickWugu(pl, pool);
@@ -6124,8 +6142,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       return this.removeEquip(target, choice);
     }
 
-    async resolveAoe(p, need, cause) {
-      for (const other of this.aliveOthers(p)) {
+    async resolveAoe(p, need, cause, only) {
+      // only：孤裁把它改成了唯一目标，只结算这些人
+      const list = only && only.length ? only.filter((x) => x && x.alive) : this.aliveOthers(p);
+      for (const other of list) {
         if (this.over) return;
         const ok = await this.askForResponse(other, need, `【${cause}】`);
         if (!ok) {
