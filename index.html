@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-22 18:46 · a0ec746">
+<meta name="x-build" content="2026-10-22 19:01 · 574de63">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1943,6 +1943,50 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   .turn-hint { display: none; }
 }
 
+/* 弃牌堆面板 */
+.pile-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 2px 8px;
+  border-bottom: 1px solid rgba(198, 162, 74, 0.16);
+  margin-bottom: 8px;
+}
+.pile-head b { font-size: 12px; color: var(--gold-2); letter-spacing: 1px; font-weight: 500; }
+.pile-head i { font-style: normal; font-size: 10px; color: #8d9a8f; line-height: 1.6; }
+.pile-head small { font-size: 10px; color: #6f7d72; }
+.pile-grid { display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start; }
+.pile-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(160, 168, 158, 0.28);
+  background: rgba(30, 36, 32, 0.82);
+  font-size: 10px;
+  line-height: 1.25;
+}
+.pile-card b { font-weight: 500; color: #d7dcd4; }
+.pile-card i { font-style: normal; font-size: 9px; color: #7f8b81; }
+.pile-card.red b { color: #e8a89e; }
+.pile-card.black b { color: #b9c2ba; }
+.pile-card.equip { border-color: rgba(198, 162, 74, 0.45); }
+.pile-empty { color: #6f7d72; font-size: 11px; padding: 10px 2px; }
+
+/* 牌桌播报：新增 steal / damage 两种 */
+.feed-item.steal {
+  border-left-color: #d8a44a;
+  background: linear-gradient(90deg, rgba(88, 62, 20, 0.82), rgba(40, 30, 12, 0.6));
+  color: #f2dfae;
+}
+.feed-item.damage {
+  border-left-color: #c9584a;
+  background: linear-gradient(90deg, rgba(88, 32, 26, 0.82), rgba(40, 16, 12, 0.6));
+  color: #f4cfc7;
+}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-512.png">
@@ -2044,11 +2088,16 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       <div class="tabs">
         <button class="tab active" data-tab="skills">技能</button>
         <button class="tab" data-tab="log">战斗记录<i class="dot" id="logDot" hidden></i></button>
+        <button class="tab" data-tab="pile">弃牌堆<i class="dot" id="pileDot" hidden></i></button>
         <button id="btnClearLog" class="mini tab-clear" hidden>清空</button>
       </div>
       <div class="tab-body" id="tabSkills"></div>
       <div class="tab-body" id="tabLog" hidden>
         <ol class="log" id="logList"></ol>
+      </div>
+      <div class="tab-body" id="tabPile" hidden>
+        <div class="pile-head" id="pileHead">弃牌堆</div>
+        <div class="pile-grid" id="pileGrid"></div>
       </div>
     </aside>
 
@@ -7802,6 +7851,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     btnClearLog: $('#btnClearLog'),
     tabSkills: $('#tabSkills'),
     tabLog: $('#tabLog'),
+    tabPile: $('#tabPile'),
+    pileHead: $('#pileHead'),
+    pileGrid: $('#pileGrid'),
+    pileDot: $('#pileDot'),
     logDot: $('#logDot'),
     tabs: Array.from(document.querySelectorAll('.tab[data-tab]')),
 
@@ -7837,6 +7890,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     pendingTargets: null,
     lastHandSig: '',
     logShown: 0,
+    pileSeen: -1,
     lastPlayKey: '',
     hpSeen: {},
     over: false,
@@ -9108,6 +9162,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     el.tabs.forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
     el.tabSkills.hidden = name !== 'skills';
     el.tabLog.hidden = name !== 'log';
+    el.tabPile.hidden = name !== 'pile';
     el.btnClearLog.hidden = name !== 'log';
     if (name === 'log') {
       el.logDot.hidden = true;
@@ -9115,7 +9170,41 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         el.logList.scrollTop = el.logList.scrollHeight;
       });
     }
+    if (name === 'pile') {
+      el.pileDot.hidden = true;
+      renderPile();
+    }
     requestAnimationFrame(updateSkillOverflow);
+  }
+
+  /* 弃牌堆：把整局进过弃牌堆的牌列出来（最新的在上） */
+  function renderPile() {
+    const E = state.E;
+    if (!E || !el.pileGrid) return;
+    const list = E.discard.slice().reverse();
+    const total = E.discard.length;
+
+    // 按牌名统计
+    const counts = new Map();
+    for (const c of list) counts.set(c.label, (counts.get(c.label) || 0) + 1);
+    const summary = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k}×${v}`)
+      .join('　');
+
+    el.pileHead.innerHTML =
+      `<b>弃牌堆 ${total} 张</b>` +
+      (summary ? `<i>${summary}</i>` : `<i>还没有牌进弃牌堆</i>`) +
+      `<small>牌堆还剩 ${E.deck.length} 张</small>`;
+
+    el.pileGrid.innerHTML = list
+      .map(
+        (c) =>
+          `<span class="pile-card ${c.red ? 'red' : 'black'} ${c.type === 'equip' ? 'equip' : ''}">` +
+          `<b>${c.label}</b><i>${c.suit}${c.rank}</i></span>`
+      )
+      .join('');
+    if (!list.length) el.pileGrid.innerHTML = '<p class="pile-empty">空</p>';
   }
 
   /* ------------------------------ 手牌 ------------------------------ */
@@ -9527,8 +9616,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         const owner = E.get(E.currentPlayerId);
         const who = !owner ? '' : owner.id === 'p0' ? '你的回合' : `${owner.name} 的回合`;
         feedPush(`第 ${E.round} 轮 · ${who}`, 'turn');
-      } else if (e.kind === 'skill' && /【(银贞|洁霜|瑶心)】/.test(e.text)) {
+      } else if (e.kind === 'skill') {
+        // 所有技能播报都上牌桌，不再只挑三个
         feedPush(e.text, 'skill');
+      } else if (e.kind === 'damage') {
+        feedPush(e.text, 'damage');
+      } else if (e.kind === 'steal') {
+        feedPush(e.text, 'steal');
+        toast(e.text);
       }
     }
     state.logShown = E.log.length;
@@ -9538,10 +9633,20 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     } else if (appended) {
       el.logDot.hidden = false;
     }
+
+    // 弃牌堆：数量变了就点亮小圆点，正在看就顺手刷新
+    const pileN = E.discard.length;
+    if (pileN !== state.pileSeen) {
+      state.pileSeen = pileN;
+      if (state.tab === 'pile') renderPile();
+      else if (el.pileDot) el.pileDot.hidden = false;
+    } else if (state.tab === 'pile') {
+      renderPile();
+    }
   }
 
   /* 播报队列：出牌 / 响应 / 技能 / 转回合都走这里，最多同时挂 3 条 */
-  const FEED_MAX = 3;
+  const FEED_MAX = 5;
 
   function feedPush(text, kind) {
     if (!el.feed || !text) return;
@@ -9551,7 +9656,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     el.feed.appendChild(item);
     while (el.feed.children.length > FEED_MAX) el.feed.removeChild(el.feed.firstChild);
 
-    const life = kind === 'turn' ? 3200 : kind === 'skill' ? 2800 : 2400;
+    const life = kind === 'turn' ? 4200 : kind === 'steal' ? 3800 : kind === 'skill' ? 3400 : 3000;
     setTimeout(() => {
       item.classList.add('out');
       setTimeout(() => item.remove(), 320);
@@ -9977,7 +10082,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
   if (params.has('drawer')) setDrawer(true);
 
-  if (params.get('tab') === 'log') switchTab('log');
+  if (params.get('tab') && ['skills', 'log', 'pile'].includes(params.get('tab'))) {
+    switchTab(params.get('tab'));
+  }
 
   /* ---------- 开发自检：?selftest=1 自动出牌，把结果写进标题 ---------- */
   if (params.has('selftest')) {
