@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-18 21:01 · 3f84789">
+<meta name="x-build" content="2026-10-22 13:50 · 294554f">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2179,6 +2179,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     { name: 'wugu',     label: '五谷丰登', type: 'trick', count: 2,  suits: ['♥'] },
     { name: 'jiedao',   label: '借刀杀人', type: 'trick', count: 2,  suits: ['♣'] },
     { name: 'lebu',     label: '乐不思蜀', type: 'trick', delayed: true, count: 3, suits: ['♣', '♠'] },
+    { name: 'shandian', label: '闪电',     type: 'trick', delayed: true, count: 2, suits: ['♠', '♥'] },
 
     { name: 'qinggang', label: '青釭剑',   type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
     { name: 'cixiong',  label: '雌雄双股剑', type: 'equip', slot: 'weapon', range: 2, count: 1, suits: ['♠'] },
@@ -2222,6 +2223,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     wugu: '亮出牌堆顶 X 张牌（X 为存活角色数），从你开始每人依次选一张获得。',
     jiedao: '令一名装备了武器的角色对其攻击范围内、由你指定的另一名角色使用一张【杀】，否则其将武器交给你。',
     lebu: '延时锦囊：置于一名角色的判定区。其判定阶段判定，若结果不为♥，跳过其出牌阶段。',
+    shandian: '延时锦囊：置于自己的判定区。判定阶段判定，若为♠2~9，受到 3 点雷电伤害；否则移到下家的判定区。',
     qinggang: '武器，攻击范围 2。你的【杀】无视目标的防具。',
     cixiong: '武器，攻击范围 2。你对异性角色使用【杀】时，对方需弃一张牌，否则你摸一张。',
     zhangba: '武器，攻击范围 3。你可以将两张手牌当【杀】使用或打出。',
@@ -2443,6 +2445,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       title: '天厝之野望',
       maxHp: 4,
       skills: ['xiezhao', 'quanmou', 'cuanni'],
+    },
+    zhangjiao: {
+      key: 'zhangjiao',
+      name: '张角',
+      kingdom: '群',
+      title: '狂雷天劫',
+      maxHp: 4,
+      skills: ['linyuan', 'gucai', 'leifeng'],
     },
   };
 
@@ -2845,6 +2855,34 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         '成功：两回合内「权」达到5枚，你获得技能【吞并】。\n' +
         '失败：你获得技能【唾据】。',
     },
+    linyuan: {
+      name: '临渊',
+      kind: '蓄力技',
+      tagline: '被针对就攒蓄力，还能拿闪电、改判',
+      when: '你成为牌的唯一目标时 / 出牌阶段 / 判定时',
+      text:
+        '蓄力技（0/5）。当你成为牌的唯一目标时，你获得1点蓄力点。\n' +
+        '出牌阶段，你可消耗2点蓄力点，从牌堆、弃牌堆获得一张【闪电】。\n' +
+        '判定生效时，你可使用♠手牌改判，并获得原本的判定牌。',
+    },
+    gucai: {
+      name: '孤裁',
+      kind: '主动技',
+      tagline: '把别人的牌抢成打自己',
+      when: '每轮限两次',
+      text:
+        '每轮限两次，若你不为其他角色使用非装备牌的唯一目标，你可消耗1点蓄力点，' +
+        '将你修改为此牌的唯一目标。\n' +
+        '若你的体力因此变动，你从牌堆获得一张不计入手牌上限的♠2~9的牌，否则你摸1张牌。',
+    },
+    leifeng: {
+      name: '雷丰',
+      kind: '锁定技',
+      tagline: '雷电伤害免了，还分给别人',
+      when: '你受到雷电伤害时',
+      text:
+        '当你受到雷电伤害时，防止此伤害，然后你回复一点体力并分配给其他角色等同伤害量的雷电伤害。',
+    },
     paoxiao: {
       name: '咆哮',
       kind: '锁定技',
@@ -2948,6 +2986,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (key === 'xiezhao') p.skills.xiezhao = { passive: true };
       if (key === 'quanmou') p.skills.quanmou = { mode: 'yang', used: 0 };
       if (key === 'cuanni') p.skills.cuanni = { started: false, round0: 0, done: false, result: null };
+      if (key === 'linyuan') p.skills.linyuan = { charge: 0, max: 5 };
+      if (key === 'gucai') p.skills.gucai = { used: 0 };
+      if (key === 'leifeng') p.skills.leifeng = { passive: true };
     });
     p.flags.record = null; // 军势「记录」的牌名
     // 武将牌上的附着牌（姜维的「明」；后续诸葛亮的星、赵云的霖也放这里）
@@ -4373,8 +4414,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (this.ctx) this.ctx.phase = 'judge';
       this.emit();
       for (const jc of p.judgeZone.slice()) {
-        const j = this.judge(p, jc.label);
+        let j = this.judge(p, jc.label);
         if (!j) break;
+        j = await this.tryGaipan(j, jc.label);
         if (jc.name === 'lebu') {
           if (j.suit !== '♥') {
             p.flags.skipPlay = true;
@@ -4382,9 +4424,39 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           } else {
             this.pushLog(`【乐不思蜀】判定 ♥${j.rank}：生效失败。`, 'skill');
           }
+          p.judgeZone = p.judgeZone.filter((x) => x !== jc);
+          this.toDiscard(jc, p, false);
+        } else if (jc.name === 'shandian') {
+          const rankNum = j.rank === 'A' ? 14 : j.rank === 'K' ? 13 : j.rank === 'Q' ? 12 : j.rank === 'J' ? 11 : parseInt(j.rank, 10);
+          const hit = j.suit === '♠' && rankNum >= 2 && rankNum <= 9;
+          p.judgeZone = p.judgeZone.filter((x) => x !== jc);
+          if (hit) {
+            this.pushLog(`【闪电】判定 ♠${j.rank}：${p.name} 受到 3 点雷电伤害！`, 'skill');
+            this.toDiscard(jc, p, false);
+            this.emit();
+            await this.damage({ sourceId: null, targetId: p.id, amount: 3, cause: '闪电', element: 'thunder' });
+            if (this.over || !p.alive) return;
+          } else {
+            // 未命中：移到下家的判定区
+            const n = this.players.length;
+            let idx = this.players.indexOf(p);
+            let next = null;
+            for (let i = 1; i <= n; i++) {
+              const cand = this.players[(idx + i) % n];
+              if (cand.alive && cand !== p) {
+                next = cand;
+                break;
+              }
+            }
+            if (next) {
+              next.judgeZone = next.judgeZone || [];
+              next.judgeZone.push(jc);
+              this.pushLog(`【闪电】判定 ${j.suit}${j.rank}：未生效，移到 ${next.name} 的判定区。`, 'skill');
+            } else {
+              this.toDiscard(jc, p, false);
+            }
+          }
         }
-        p.judgeZone = p.judgeZone.filter((x) => x !== jc);
-        this.toDiscard(jc, p, false);
         this.emit();
         await this.pace();
       }
@@ -4872,6 +4944,70 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     }
 
 
+    /* ------------------- 张角：临渊 / 孤裁 / 雷丰 ------------------- */
+
+    lyGain(p, n) {
+      if (!p || !p.alive || !p.skills.linyuan) return;
+      const s = p.skills.linyuan;
+      s.charge = Math.min(s.max, s.charge + (n || 1));
+    }
+
+    /** 临渊：消耗 2 点，从牌堆/弃牌堆获得一张【闪电】 */
+    async activateLinyuan(p) {
+      const s = p.skills.linyuan;
+      if (!s || s.charge < 2 || !p.alive || this.over) return;
+      const yes = await this.confirm(
+        p,
+        `【临渊】消耗2点蓄力点，从牌堆或弃牌堆获得一张【闪电】？（蓄力 ${s.charge}/${s.max}）`,
+        '临渊·取闪电',
+        { charge: s.charge }
+      );
+      if (!yes) return;
+      let c = null;
+      const di = this.deck.findIndex((x) => x.name === 'shandian');
+      if (di >= 0) {
+        c = this.deck.splice(di, 1)[0];
+      } else {
+        const qi = this.discard.findIndex((x) => x.name === 'shandian');
+        if (qi >= 0) c = this.discard.splice(qi, 1)[0];
+      }
+      if (!c) {
+        this.pushLog('【临渊】牌堆和弃牌堆都没有【闪电】了。', 'system');
+        return;
+      }
+      s.charge -= 2;
+      p.hand.push(c);
+      this.pushLog(`【临渊】${p.name} 获得一张【闪电】。`, 'skill');
+      this.emit();
+    }
+
+    /** 雷丰：受到雷电伤害时防止，回复 1 点，并把等量伤害分给其他角色 */
+    async tryLeifeng(t, amount) {
+      if (!t.skills.leifeng) return false;
+      this.pushLog(`【雷丰】${t.name} 防止了 ${amount} 点雷电伤害。`, 'skill');
+      this.heal(t, 1, '雷丰');
+      this.emit();
+      const others = this.aliveOthers(t);
+      if (!others.length) return true;
+      let left = amount;
+      let guard = 0;
+      while (left > 0 && guard++ < 6 && !this.over) {
+        const pool = others.filter((o) => o.alive);
+        if (!pool.length) break;
+        const tgt =
+          pool.length === 1
+            ? pool[0]
+            : await this.pickTarget(t, pool, `【雷丰】还剩 ${left} 点雷电伤害要分配，给谁？`, '雷丰·目标');
+        if (!tgt) break;
+        left--;
+        this.pushLog(`【雷丰】${t.name} 将 1 点雷电伤害分给 ${tgt.name}。`, 'skill');
+        this.emit();
+        await this.damage({ sourceId: t.id, targetId: tgt.id, amount: 1, cause: '雷丰', element: 'thunder' });
+      }
+      return true;
+    }
+
+
     /* ------------------------------ 摸牌 ------------------------------ */
 
     reshuffle() {
@@ -5037,6 +5173,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (!armed.length) return deny('没有装备武器的角色');
           return { ok: true, needTargets: true, targets: armed.map((o) => o.id), reason: '' };
         }
+        case 'shandian': {
+          if ((p.judgeZone || []).some((x) => x.name === 'shandian')) return deny('判定区已有【闪电】');
+          return { ok: true, needTargets: false, targets: [], reason: '' };
+        }
         case 'lebu': {
           // 持重：不能成为延时锦囊牌的目标
           const ok = others.filter((o) => !o.skills.chizhong);
@@ -5057,6 +5197,44 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       this.discard.push(c);
       this.pushLog(`判定（${cause}）：${c.suit}${c.rank}${c.label}${c.red ? ' · 红' : ' · 黑'}`, 'judge');
       return c;
+    }
+
+    /** 临渊：判定生效时，张角可用♠手牌改判，并获得原本的判定牌 */
+    async tryGaipan(judgeCard, cause) {
+      if (!judgeCard || this.inGaipan) return judgeCard;
+      const zj = this.players.find(
+        (x) => x.alive && x.skills.linyuan && x.hand.some((h) => h.suit === '♠')
+      );
+      if (!zj) return judgeCard;
+
+      this.inGaipan = true;
+      try {
+        const spades = zj.hand.filter((h) => h.suit === '♠');
+        const id = await this.ask(zj, {
+          kind: 'playCard',
+          tag: '临渊·改判',
+          text: `【临渊】判定（${cause}）是 ${judgeCard.suit}${judgeCard.rank} —— 用♠手牌改判？（原本的判定牌归你）`,
+          options: spades.map((h) => ({ label: `♠【${h.label}】${h.rank}`, value: h.id, cardId: h.id })),
+          cancel: true,
+          cancelLabel: '不改',
+        });
+        const pick = id ? this.handCard(zj, id) : null;
+        if (!pick) return judgeCard;
+
+        this.takeFromHand(zj, pick.id);
+        const oi = this.discard.indexOf(judgeCard);
+        if (oi >= 0) this.discard.splice(oi, 1);
+        zj.hand.push(judgeCard);
+        this.discard.push(pick);
+        this.pushLog(
+          `【临渊】${zj.name} 用 ♠${pick.rank} 改判，并获得原本的判定牌【${judgeCard.label}】。`,
+          'skill'
+        );
+        this.emit();
+        return pick;
+      } finally {
+        this.inGaipan = false;
+      }
     }
 
     /* ------------------------------ 出牌 ------------------------------ */
@@ -5109,11 +5287,45 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       // 龙翎：对其他角色使用牌 → 蓄力点 +1
       if (targets.some((t) => t && t !== p)) this.llGain(p, 1);
       // 江翊：成为其他角色使用牌的目标 → 韬略 +1
+      // 临渊：成为牌的唯一目标 → 蓄力点 +1
       for (const t of targets) {
-        if (t && t !== p) this.yingGain(t, 1);
+        if (!t || t === p) continue;
+        this.yingGain(t, 1);
+        if (targets.length === 1) this.lyGain(t, 1);
       }
       this.emit();
       await this.pace();
+
+      // 孤裁：别人对你以外的唯一目标使用非装备牌时，可以抢过来打自己
+      if (card.type !== 'equip' && targets.length === 1 && targets[0] !== p) {
+        const gz = this.players.find(
+          (z) =>
+            z.alive &&
+            z !== p &&
+            z.skills.gucai &&
+            z.skills.linyuan &&
+            z.skills.linyuan.charge >= 1 &&
+            z.skills.gucai.used < 2 &&
+            targets[0] !== z
+        );
+        if (gz) {
+          const yes = await this.confirm(
+            gz,
+            `【孤裁】${p.name} 使用【${label}】指定了 ${targets[0].name}。\n消耗1点蓄力点，把你改成它的唯一目标？`,
+            '孤裁',
+            { userId: p.id, targetId: targets[0].id }
+          );
+          if (yes) {
+            gz.skills.gucai.used++;
+            gz.skills.linyuan.charge--;
+            targets = [gz];
+            this.gucaiWatch = { id: gz.id, hp: gz.hp };
+            this.pushLog(`【孤裁】${gz.name} 消耗1点蓄力点，将此牌的唯一目标改为自己。`, 'skill');
+            this.emit();
+            await this.pace();
+          }
+        }
+      }
 
       // 江翊 / 爝烬 / 秉成：目标限制
       if (this.tingeJin && this.tingeJin.remain > 0 && p.id !== this.tingeJin.protectId) {
@@ -5475,6 +5687,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
             pool.forEach((c) => this.toDiscard(c, p, false));
             break;
           }
+          case 'shandian': {
+            card.placed = true;
+            p.judgeZone = p.judgeZone || [];
+            p.judgeZone.push(card);
+            this.pushLog(`【闪电】置于 ${p.name} 的判定区。`, 'skill');
+            this.emit();
+            break;
+          }
           case 'lebu': {
             const t = targets[0];
             if (!t || !t.alive) break;
@@ -5535,6 +5755,35 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       if (card.gainedBy) card.gainedBy = null;
       // 龙霖：失去牌后可以亮出牌堆顶攒「霖」
       if (!card.virtual) await this.tryLonglin(p, card);
+
+      // 孤裁：结算后看体力有没有因此变动
+      if (this.gucaiWatch) {
+        const w = this.gucaiWatch;
+        this.gucaiWatch = null;
+        const g = this.get(w.id);
+        if (g && g.alive) {
+          if (g.hp !== w.hp) {
+            const ri = this.deck.findIndex(
+              (x) => x.suit === '♠' && ['2', '3', '4', '5', '6', '7', '8', '9'].includes(String(x.rank))
+            );
+            if (ri >= 0) {
+              const got = this.deck.splice(ri, 1)[0];
+              got.noLimit = true;
+              g.hand.push(got);
+              this.pushLog(
+                `【孤裁】${g.name} 体力因此变动，从牌堆获得 ♠${got.rank}【${got.label}】（不计手牌上限）。`,
+                'skill'
+              );
+            } else {
+              this.pushLog('【孤裁】牌堆里没有 ♠2~9 了。', 'system');
+            }
+          } else {
+            this.pushLog(`【孤裁】${g.name} 的体力没有变动，摸 1 张。`, 'skill');
+            await this.draw(g, 1);
+          }
+          this.emit();
+        }
+      }
       this.emit();
     }
 
@@ -5817,6 +6066,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       let amount = evt.amount == null ? 1 : evt.amount;
       // 记录最后一次伤害来源，供「击杀」类技能判定
       if (evt.sourceId && evt.sourceId !== t.id) t.flags.lastDamageBy = evt.sourceId;
+
+      // 雷丰：雷电伤害直接防止，回 1 点并分给别人
+      if (evt.element === 'thunder' && t.skills.leifeng) {
+        const stopped = await this.tryLeifeng(t, amount);
+        if (stopped) return 0;
+      }
 
       // 银贞：回合外，与陆郁生距离 ≤1 的角色受到伤害时
       const adjusted = await this.tryYinzhen(t, amount, evt.cause);
@@ -6304,6 +6559,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           tone: s.quanmou.mode === 'yang' ? 'gold' : 'violet',
         });
       }
+      if (s.linyuan && s.linyuan.charge >= 2) {
+        out.push({ key: 'linyuan', label: '临渊', note: `蓄力${s.linyuan.charge}·取闪电`, tone: 'cyan' });
+      }
       if (s.quanmou && s.quanmou.mode === 'yang' && p.marks.quan.length) {
         out.push({ key: 'useQuan', label: '权', note: `${p.marks.quan.length} 枚`, tone: 'silver' });
       }
@@ -6329,6 +6587,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         case 'jueiming': return this.activateJueiming(p);
         case 'quanmou': return this.activateQuanmou(p);
         case 'useQuan': return this.useQuan(p);
+        case 'linyuan': return this.activateLinyuan(p);
         default:
           return null;
       }
@@ -6899,6 +7158,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           if (req.tag === '挟诏') return p.hand.length <= 3;
           if (req.tag === '权谋·发动') return p.hand.length >= 2;
           if (req.tag === '篡逆') return p.hand.length >= 1;
+
+          /* ---- 张角 ---- */
+          if (req.tag === '临渊·取闪电') return p.skills.linyuan.charge >= 3;
+          if (req.tag === '孤裁') return p.hp >= 3;
+          if (req.tag === '雷丰·目标') return true;
+          if (req.tag === '临渊·改判') {
+            return opts.some((o) => String(o.label).includes('♠'));
+          }
 
           return false;
         }
@@ -7896,6 +8163,14 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
         const q = lu.marks && lu.marks.quan ? lu.marks.quan.length : 0;
         state = s.done ? (s.result === 'success' ? '成功' : '失败') : `权 ${q}/5`;
         cls = s.done ? 'used' : '';
+      } else if (key === 'linyuan') {
+        state = `蓄力 ${s.charge}/${s.max}`;
+        cls = s.charge >= 2 ? '' : 'used';
+      } else if (key === 'gucai') {
+        state = `本轮 ${s.used}/2`;
+        cls = s.used >= 2 ? 'used' : '';
+      } else if (key === 'leifeng') {
+        state = '被动';
       }
       const recName = key === 'junshi' && lu.flags && lu.flags.record;
       const tipExtra = recName
@@ -8102,7 +8377,21 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
       '<path d="M12 3.8c-3 2.4-3 13.9 0 16.4 3-2.5 3-14 0-16.4Z" stroke-width="1.2"/>' +
       '<path d="M4.2 12h15.6" stroke-width="1.2"/>' +
       '</svg>',
-    cuanni:
+    linyuan:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M13.2 2.6 5.4 13.4h5.2L9.6 21.4l8-11.2h-5.2Z"/>' +
+      '</svg>',
+    gucai:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M4.4 6.2h6.2l8 11.6"/>' +
+      '<path d="M18.6 17.8h-6.2L4.4 6.2" stroke-width="1.3"/>' +
+      '<circle cx="12" cy="12" r="1.6"/>' +
+      '</svg>',
+    leifeng:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 2.6c4 4.2 6 7.4 6 10a6 6 0 0 1-12 0c0-2.6 2-5.8 6-10Z"/>' +
+      '<path d="M12.6 9.6 10 13.4h2.6L11.8 17l3.2-4.1h-2.4Z" stroke-width="1.2"/>' +
+      '</svg>',    cuanni:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M12 2.6 4.6 20.4h14.8Z"/>' +
       '<path d="M12 8.4v5.6M12 16.6v1.4" stroke-width="1.3"/>' +
@@ -8387,6 +8676,23 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           state: s.done ? (s.result === 'success' ? '已成功' : '已失败') : `权 ${q}/5`,
           stateCls: s.done ? 'used' : '',
           meta: '受伤后摸1置1「权」；两回合内凑到 5 枚 → 【吞并】，超时 → 【唾据】（两者文本待补）。',
+        });
+      } else if (key === 'linyuan') {
+        html += skillCardHtml(key, {
+          state: `蓄力 ${s.charge}/${s.max}`,
+          stateCls: s.charge >= 2 ? '' : 'used',
+          meta: '成为牌的唯一目标时 +1；耗 2 点可从牌堆/弃牌堆取【闪电】；判定时可用♠手牌改判并收下原判定牌。',
+        });
+      } else if (key === 'gucai') {
+        html += skillCardHtml(key, {
+          state: `本轮 ${s.used}/2`,
+          stateCls: s.used >= 2 ? 'used' : '',
+          meta: '耗 1 点蓄力点，把别人对你以外唯一目标的非装备牌抢过来打自己；体力因此变动则白嫖♠2~9，否则摸1。',
+        });
+      } else if (key === 'leifeng') {
+        html += skillCardHtml(key, {
+          state: '被动',
+          meta: '受到雷电伤害时防止，回复 1 点，并把等量雷电伤害分配给其他角色。',
         });
       } else {
         html += skillCardHtml(key, { state: '被动' });
