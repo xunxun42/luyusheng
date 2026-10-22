@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1512">
-<meta name="x-build" content="2026-10-23 02:01 · 783e0c8">
+<meta name="x-build" content="2026-10-23 02:10 · d805b19">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2067,6 +2067,81 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   border-top: 1px dashed rgba(198, 162, 74, 0.22);
   margin-top: 4px;
 }
+/* 待机主页 */
+.home {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(65% 55% at 50% 42%, rgba(24, 52, 40, 0.92), rgba(6, 12, 10, 0.97)),
+    #050a08;
+}
+.home-card {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 34px 30px 30px;
+  border-radius: 14px;
+  border: 1px solid rgba(198, 162, 74, 0.26);
+  background: linear-gradient(180deg, rgba(18, 32, 26, 0.96), rgba(8, 14, 12, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+.home-title {
+  font-family: var(--serif);
+  font-size: 25px;
+  letter-spacing: 6px;
+  color: var(--gold-2);
+  text-align: center;
+}
+.home-sub {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #7f8d81;
+  text-align: center;
+  margin-top: -6px;
+}
+.home-menu {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 8px;
+}
+.home-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 12px 16px;
+  border-radius: 9px;
+  border: 1px solid rgba(160, 168, 158, 0.26);
+  background: rgba(26, 34, 29, 0.85);
+  color: #dfe4dc;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.15s, background 0.15s;
+}
+.home-btn b { font-size: 14px; font-weight: 500; letter-spacing: 1px; }
+.home-btn i { font-style: normal; font-size: 10.5px; color: #85917f; letter-spacing: 0; }
+.home-btn:hover { transform: translateY(-1px); border-color: rgba(216, 180, 106, 0.7); background: rgba(40, 48, 36, 0.9); }
+.home-btn.primary {
+  border-color: rgba(216, 180, 106, 0.72);
+  background: linear-gradient(180deg, rgba(78, 64, 26, 0.9), rgba(42, 34, 14, 0.92));
+}
+.home-btn.primary b { color: #f3dfa8; }
+.home-btn.primary i { color: #b6a271; }
+.home-foot { font-size: 10.5px; color: #6f7d72; margin-top: 4px; }
+@media (max-width: 560px) {
+  .home-card { padding: 26px 18px 22px; }
+  .home-title { font-size: 20px; letter-spacing: 4px; }
+}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-512.png">
@@ -2098,7 +2173,9 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
           <option value="zhangfei">张飞 · 咆哮</option>
         </select>
       </label>
+      <button id="btnHome" class="btn ghost" title="回到主页">主页</button>
       <button id="btnPick" class="btn ghost">换将</button>
+      <button id="btnGenEditorTop" class="btn ghost gen-editor-btn" title="自制武将编辑器（只保存在本机）">＋ 自制武将</button>
       <button id="btnWatch" class="btn ghost" title="双方 AI 自动对局">观战</button>
       <button id="btnRules" class="btn ghost">规则</button>
       <button id="btnFull" class="btn ghost icon-btn" title="全屏 / 退出全屏" aria-label="全屏">⛶</button>
@@ -2160,6 +2237,8 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     <aside class="panel sidepanel">
       <div class="drawer-tools">
         <button id="mBtnPick" class="btn ghost">换将</button>
+        <button id="mBtnHome" class="btn ghost">主页</button>
+        <button id="mBtnGenEditor" class="btn ghost">＋ 自制武将</button>
         <button id="mBtnWatch" class="btn ghost">观战</button>
         <button id="mBtnRules" class="btn ghost">规则</button>
         <button id="mBtnFull" class="btn ghost">全屏</button>
@@ -2284,6 +2363,10 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     </div>
     <div class="modal-body" id="edBody"></div>
   </div>
+</div>
+
+<div class="home" id="home" hidden>
+  <div class="home-card" id="homeBody"></div>
 </div>
 
 <div class="toast" id="toast" hidden></div>
@@ -7959,6 +8042,12 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
     genEditor: $('#genEditor'),
     edBody: $('#edBody'),
     btnGenEditor: $('#btnGenEditor'),
+    btnGenEditorTop: $('#btnGenEditorTop'),
+    btnHome: $('#btnHome'),
+    mBtnHome: $('#mBtnHome'),
+    home: $('#home'),
+    homeBody: $('#homeBody'),
+    mBtnGenEditor: $('#mBtnGenEditor'),
     edClose: $('#edClose'),
     pileHead: $('#pileHead'),
     pileGrid: $('#pileGrid'),
@@ -8211,6 +8300,7 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   }
 
   function openPicker() {
+    hideHome();
     state.pick.me = state.me;
     const need = MODE_SIZE[state.gameMode] - 1;
     while (state.pick.others.length < need) state.pick.others.push('random');
@@ -9641,6 +9731,20 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   }
 
   if (el.btnGenEditor) el.btnGenEditor.addEventListener('click', openEditor);
+  if (el.btnGenEditorTop) el.btnGenEditorTop.addEventListener('click', openEditor);
+  if (el.btnHome) el.btnHome.addEventListener('click', showHome);
+  if (el.mBtnHome) {
+    el.mBtnHome.addEventListener('click', () => {
+      closeDrawer();
+      showHome();
+    });
+  }
+  if (el.mBtnGenEditor) {
+    el.mBtnGenEditor.addEventListener('click', () => {
+      closeDrawer();
+      openEditor();
+    });
+  }
   if (el.edClose) el.edClose.addEventListener('click', closeEditor);
   if (el.genEditor) {
     el.genEditor.addEventListener('click', (ev) => {
@@ -9969,6 +10073,56 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
 
   /* ---------------------------- 编辑器 UI ---------------------------- */
 
+  /* ---------------------------- 待机主页 ---------------------------- */
+
+  function renderHome() {
+    if (!el.homeBody) return;
+    const all = Object.keys(GD);
+    const custom = all.filter((k) => GD[k].custom).length;
+    const ships = (globalThis.SGS && globalThis.SGS.customGenerals) || [];
+    const deckN = S.cards.buildDeck().length;
+    const lastGame = state.E && state.E.over ? '上次对局已结束' : '';
+
+    el.homeBody.innerHTML =
+      `<div class="home-title">陆郁生 · 技能试炼场</div>` +
+      `<div class="home-sub">${all.length} 名武将 · ${deckN} 张牌` +
+      `${custom ? ` · 自制 ${custom} 个（本机）` : ''}` +
+      `${ships.length ? ` · 已上线 ${ships.length} 个` : ''}</div>` +
+      `<div class="home-menu">` +
+      `<button class="home-btn primary" data-home="play"><b>开始对局</b><i>选模式 → 选武将 → 开打</i></button>` +
+      `<button class="home-btn" data-home="editor"><b>自制武将</b><i>只存在这台电脑；导出后在终端审批才会上线</i></button>` +
+      `<button class="home-btn" data-home="watch"><b>观战</b><i>让双方 AI 自己打一局</i></button>` +
+      `<button class="home-btn" data-home="rules"><b>规则 / 武将表</b><i>技能全文、牌堆、装备效果</i></button>` +
+      `</div>` +
+      (lastGame ? `<div class="home-foot">${lastGame}</div>` : '');
+
+    el.homeBody.querySelectorAll('[data-home]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const act = b.dataset.home;
+        if (act === 'play') {
+          hideHome();
+          openPicker();
+        } else if (act === 'editor') openEditor();
+        else if (act === 'watch') {
+          hideHome();
+          toggleWatch();
+        } else if (act === 'rules') openRules();
+      });
+    });
+  }
+
+  function showHome() {
+    if (!el.home) return;
+    renderHome();
+    el.home.hidden = false;
+    document.body.classList.add('at-home');
+  }
+
+  function hideHome() {
+    if (!el.home) return;
+    el.home.hidden = true;
+    document.body.classList.remove('at-home');
+  }
   function openEditor() {
     if (!el.genEditor) return;
     el.genEditor.hidden = false;
@@ -10451,8 +10605,13 @@ select:hover { border-color: rgba(216, 180, 106, 0.5); }
   if (GD[params.get('foe')]) state.pick.others[0] = params.get('foe');
   fillFoeSelect();
   applyBrand(state.me);
-  if (params.has('selftest') || params.has('watch') || params.has('play')) startGame();
-  else openPicker();
+  if (params.has('selftest') || params.has('watch') || params.has('play')) {
+    hideHome();
+    startGame();
+  } else {
+    // 默认进待机主页，而不是直接糊到选将界面
+    showHome();
+  }
 
   if (params.has('editor')) openEditor();
 
